@@ -511,7 +511,51 @@ CITY_INTEL_DB = {
         {"city": "New York", "region": "Nova York (NY)", "lat": 40.7128, "lng": -74.0060},
         {"city": "Chicago", "region": "Illinois (IL)", "lat": 41.8781, "lng": -87.6298},
         {"city": "Atlanta", "region": "Geórgia (GA)", "lat": 33.7490, "lng": -84.3880},
-        {"city": "Los Angeles", "region": "Califórnia (CA)", "lat": 34.0522, "lng": -118.2437}
+        {"city": "Los Angeles", "region": "Califórnia (CA)", "lat": 34.0522, "lng": -118.2437},
+        {"city": "Boardman", "region": "Oregon (OR)", "lat": 45.8399, "lng": -119.7006},
+        {"city": "Miami", "region": "Flórida (FL)", "lat": 25.7617, "lng": -80.1918}
+    ],
+    "MX": [
+        {"city": "Cidade do México", "region": "CDMX", "lat": 19.4326, "lng": -99.1332},
+        {"city": "Guadalajara", "region": "Jalisco", "lat": 20.6597, "lng": -103.3496},
+        {"city": "Monterrey", "region": "Nuevo León", "lat": 25.6866, "lng": -100.3161},
+        {"city": "Querétaro", "region": "Querétaro", "lat": 20.5888, "lng": -100.3899}
+    ],
+    "TW": [
+        {"city": "Taipei", "region": "Taipei", "lat": 25.0330, "lng": 121.5654},
+        {"city": "Taichung", "region": "Taichung", "lat": 24.1477, "lng": 120.6736},
+        {"city": "Kaohsiung", "region": "Kaohsiung", "lat": 22.6273, "lng": 120.3014}
+    ],
+    "SE": [
+        {"city": "Estocolmo", "region": "Stockholm", "lat": 59.3293, "lng": 18.0686},
+        {"city": "Gotemburgo", "region": "Västra Götaland", "lat": 57.7089, "lng": 11.9746},
+        {"city": "Malmö", "region": "Skåne", "lat": 55.6050, "lng": 13.0038}
+    ],
+    "NO": [
+        {"city": "Oslo", "region": "Oslo", "lat": 59.9139, "lng": 10.7522},
+        {"city": "Bergen", "region": "Vestland", "lat": 60.3913, "lng": 5.3221}
+    ],
+    "BG": [
+        {"city": "Sófia", "region": "Sofia City", "lat": 42.6977, "lng": 23.3219},
+        {"city": "Varna", "region": "Varna", "lat": 43.2141, "lng": 27.9147}
+    ],
+    "ES": [
+        {"city": "Madri", "region": "Comunidade de Madrid", "lat": 40.4168, "lng": -3.7038},
+        {"city": "Barcelona", "region": "Catalunha", "lat": 41.3879, "lng": 2.1699},
+        {"city": "Valência", "region": "Comunidade Valenciana", "lat": 39.4699, "lng": -0.3763}
+    ],
+    "IT": [
+        {"city": "Milão", "region": "Lombardia", "lat": 45.4642, "lng": 9.1900},
+        {"city": "Roma", "region": "Lácio", "lat": 41.9028, "lng": 12.4964},
+        {"city": "Turim", "region": "Piemonte", "lat": 45.0703, "lng": 7.6869}
+    ],
+    "KR": [
+        {"city": "Seul", "region": "Sudogwon", "lat": 37.5665, "lng": 126.9780},
+        {"city": "Busan", "region": "Yeongnam", "lat": 35.1796, "lng": 129.0756}
+    ],
+    "PT": [
+        {"city": "Lisboa", "region": "Lisboa", "lat": 38.7223, "lng": -9.1393},
+        {"city": "Porto", "region": "Porto", "lat": 41.1579, "lng": -8.6291}
     ],
     "DE": [
         {"city": "Frankfurt am Main", "region": "Hessen (HE)", "lat": 50.1109, "lng": 8.6821},
@@ -561,9 +605,36 @@ def get_ip_intel_profile(ip: str, country_code: str = "US", as_name: str = "") -
     cc = (country_code or "US").upper()
     as_lower = (as_name or "").lower()
     
-    cities = CITY_INTEL_DB.get(cc, [{"city": "Capital / Região Central", "region": cc, "lat": 20.0, "lng": 0.0}])
-    ip_hash = sum(ord(c) for c in (ip or "1.1.1.1"))
-    city_info = cities[ip_hash % len(cities)]
+    # Fallback to general country coords if country not in city list
+    default_fallback = {
+        "TW": {"city": "Taipei", "region": "Taiwan", "lat": 25.0330, "lng": 121.5654},
+        "SE": {"city": "Estocolmo", "region": "Suécia", "lat": 59.3293, "lng": 18.0686},
+        "MX": {"city": "Cidade do México", "region": "México", "lat": 19.4326, "lng": -99.1332},
+        "NO": {"city": "Oslo", "region": "Noruega", "lat": 59.9139, "lng": 10.7522},
+        "BG": {"city": "Sófia", "region": "Bulgária", "lat": 42.6977, "lng": 23.3219},
+        "ES": {"city": "Madri", "region": "Espanha", "lat": 40.4168, "lng": -3.7038},
+        "IT": {"city": "Milão", "region": "Itália", "lat": 45.4642, "lng": 9.1900},
+        "KR": {"city": "Seul", "region": "Coreia do Sul", "lat": 37.5665, "lng": 126.9780},
+        "PT": {"city": "Lisboa", "region": "Portugal", "lat": 38.7223, "lng": -9.1393},
+        "IE": {"city": "Dublin", "region": "Irlanda", "lat": 53.3498, "lng": -6.2603},
+        "IN": {"city": "Mumbai", "region": "Índia", "lat": 19.0760, "lng": 72.8777},
+        "AU": {"city": "Sydney", "region": "Austrália", "lat": -33.8688, "lng": 151.2093},
+        "VN": {"city": "Hanói", "region": "Vietnã", "lat": 21.0285, "lng": 105.8542},
+        "SC": {"city": "Victoria", "region": "Seicheles", "lat": -4.6191, "lng": 55.4513},
+        "HK": {"city": "Hong Kong", "region": "Hong Kong", "lat": 22.3193, "lng": 114.1694},
+        "RO": {"city": "Bucareste", "region": "Romênia", "lat": 44.4268, "lng": 26.1025},
+        "UA": {"city": "Kiev", "region": "Ucrânia", "lat": 50.4501, "lng": 30.5234},
+        "ID": {"city": "Jacarta", "region": "Indonésia", "lat": -6.2088, "lng": 106.8456}
+    }
+
+    cities = CITY_INTEL_DB.get(cc)
+    if cities:
+        ip_hash = sum(ord(c) for c in (ip or "1.1.1.1"))
+        city_info = cities[ip_hash % len(cities)]
+    elif cc in default_fallback:
+        city_info = default_fallback[cc]
+    else:
+        city_info = {"city": f"Região {cc}", "region": cc, "lat": 37.0902, "lng": -95.7129}
     
     rdns = resolve_rdns_sync(ip)
     rdns_lower = rdns.lower()
@@ -650,7 +721,12 @@ async def get_geo_threats():
         "ID": {"name": "Indonésia", "lat": -0.7893, "lng": 113.9213},
         "IT": {"name": "Itália", "lat": 41.8719, "lng": 12.5674},
         "ES": {"name": "Espanha", "lat": 40.4637, "lng": -3.7492},
-        "RO": {"name": "Romênia", "lat": 45.9432, "lng": 24.9668}
+        "RO": {"name": "Romênia", "lat": 45.9432, "lng": 24.9668},
+        "TW": {"name": "Taiwan", "lat": 23.6978, "lng": 120.9605},
+        "SE": {"name": "Suécia", "lat": 60.1282, "lng": 18.6435},
+        "MX": {"name": "México", "lat": 23.6345, "lng": -102.5528},
+        "NO": {"name": "Noruega", "lat": 60.4720, "lng": 8.4689},
+        "PT": {"name": "Portugal", "lat": 39.3999, "lng": -8.2245}
     }
 
     geo_list = []

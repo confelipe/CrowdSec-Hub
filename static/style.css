@@ -3122,21 +3122,20 @@ select option,
 
 /* Ephemeral Pulse Marker Animations */
 .radar-pulse-marker {
-  position: relative;
+  position: absolute;
   width: 24px;
   height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  margin: 0;
+  padding: 0;
+  pointer-events: auto;
 }
 
 .radar-pulse-inner {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 24px;
+  height: 24px;
   animation: radarMarkerFadeIn 0.5s ease-out forwards;
   transition: opacity 0.6s ease, transform 0.6s ease, filter 0.6s ease;
   will-change: opacity, transform, filter;
@@ -3156,39 +3155,55 @@ select option,
 
 /* Red (Threat) Pulse Marker */
 .radar-pulse-red .radar-dot-core {
+  position: absolute;
+  left: 50%;
+  top: 50%;
   width: 10px;
   height: 10px;
+  margin-left: -5px;
+  margin-top: -5px;
   background: #ef4444;
   border-radius: 50%;
   box-shadow: 0 0 14px #ef4444;
-  position: absolute;
 }
 
 .radar-pulse-red .radar-dot-ripple {
+  position: absolute;
+  left: 50%;
+  top: 50%;
   width: 32px;
   height: 32px;
+  margin-left: -16px;
+  margin-top: -16px;
   border: 2px solid #ef4444;
   border-radius: 50%;
-  position: absolute;
   animation: radarRipple 1.8s infinite ease-out;
 }
 
 /* Green (Legit) Pulse Marker */
 .radar-pulse-green .radar-dot-core {
+  position: absolute;
+  left: 50%;
+  top: 50%;
   width: 8px;
   height: 8px;
+  margin-left: -4px;
+  margin-top: -4px;
   background: #10b981;
   border-radius: 50%;
   box-shadow: 0 0 12px #10b981;
-  position: absolute;
 }
 
 .radar-pulse-green .radar-dot-ripple {
+  position: absolute;
+  left: 50%;
+  top: 50%;
   width: 26px;
   height: 26px;
+  margin-left: -13px;
+  margin-top: -13px;
   border: 2px solid #10b981;
   border-radius: 50%;
-  position: absolute;
   animation: radarRipple 1.8s infinite ease-out;
 }
 
