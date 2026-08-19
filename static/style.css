@@ -35,6 +35,56 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
+/* Global Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 6px;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--brand-teal, #008fa8);
+}
+
+/* Enhanced Modal & Code Scrollbars */
+.modal-body,
+.table-container,
+pre,
+code,
+.tech-tabs-bar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 143, 168, 0.4) rgba(0, 0, 0, 0.2);
+}
+
+.modal-body::-webkit-scrollbar-track,
+.table-container::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 4px;
+}
+
+.modal-body::-webkit-scrollbar-thumb,
+.table-container::-webkit-scrollbar-thumb {
+  background: rgba(0, 143, 168, 0.4);
+  border-radius: 6px;
+}
+
+.modal-body::-webkit-scrollbar-thumb:hover,
+.table-container::-webkit-scrollbar-thumb:hover {
+  background: var(--brand-teal, #008fa8);
+  box-shadow: 0 0 8px rgba(0, 143, 168, 0.5);
 }
 
 body.dark-theme {
