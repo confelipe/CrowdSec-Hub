@@ -1758,21 +1758,23 @@ async function fetchAndRenderRadarEvents() {
 
     const now = Date.now();
 
-    // 1. Process 3-minute sliding window markers on the global map
+    // 1. Process 60-second sliding window markers with Phosphor Decay on the global map
     rawEvents.forEach(evt => {
       if (evt.lat === undefined || evt.lng === undefined) return;
       const evtTime = new Date(evt.timestamp).getTime();
       if (isNaN(evtTime)) return;
 
-      // Only plot events within the last 3 minutes (180,000 ms)
-      if (now - evtTime <= 180000) {
+      const ageSec = (now - evtTime) / 1000;
+
+      // Retain in active phosphor window for 60 seconds
+      if (ageSec <= 60) {
         const key = evt.id || `${evt.ip}_${evt.type}`;
         const isBlocked = (evt.type === 'blocked');
         const color = isBlocked ? '#ef4444' : '#10b981';
         const isVisible = isBlocked ? showRadarThreats : showRadarLegit;
 
         if (!radarActiveMarkersMap.has(key)) {
-          // Create solid core marker for the 3-minute window
+          // Create solid core marker
           const coreMarker = L.circleMarker([evt.lat, evt.lng], {
             radius: 6,
             fillColor: color,
@@ -1809,6 +1811,8 @@ async function fetchAndRenderRadarEvents() {
             coreMarker.addTo(radarMapInstance);
             // Trigger temporary ripple wave animation on initial appearance
             emitRadarRippleRing(evt.lat, evt.lng, color);
+            // Launch traveling traffic beam to the São Paulo ingress hub (Option 3)
+            launchTrafficBeam([evt.lat, evt.lng], isBlocked);
           }
 
           radarActiveMarkersMap.set(key, {
@@ -1817,28 +1821,67 @@ async function fetchAndRenderRadarEvents() {
             type: evt.type,
             evt: evt
           });
-        } else {
-          // Update visibility based on filter toggles
-          const entry = radarActiveMarkersMap.get(key);
-          if (radarMapInstance) {
-            const hasLayer = radarMapInstance.hasLayer(entry.marker);
-            if (isVisible && !hasLayer) {
-              entry.marker.addTo(radarMapInstance);
-            } else if (!isVisible && hasLayer) {
-              radarMapInstance.removeLayer(entry.marker);
-            }
-          }
         }
       }
     });
 
-    // 2. Clean up expired markers older than 3 minutes (180s)
+    // 2. Apply Age-based Phosphor Trail Decay & Clean up expired (>60s) markers
     radarActiveMarkersMap.forEach((entry, key) => {
-      if (now - entry.timestamp > 180000) {
+      const ageSec = (now - entry.timestamp) / 1000;
+      const isVisible = (entry.type === 'blocked') ? showRadarThreats : showRadarLegit;
+
+      if (ageSec > 60) {
         if (radarMapInstance && radarMapInstance.hasLayer(entry.marker)) {
           radarMapInstance.removeLayer(entry.marker);
         }
         radarActiveMarkersMap.delete(key);
+      } else {
+        if (radarMapInstance) {
+          const hasLayer = radarMapInstance.hasLayer(entry.marker);
+          if (isVisible && !hasLayer) {
+            entry.marker.addTo(radarMapInstance);
+          } else if (!isVisible && hasLayer) {
+            radarMapInstance.removeLayer(entry.marker);
+          }
+
+          if (isVisible && hasLayer) {
+            // Smooth phosphor decay curve based on age (Option 1)
+            if (ageSec <= 6) {
+              // 0-6s: Fresh impact (bright, radius 6, white border)
+              entry.marker.setRadius(6);
+              entry.marker.setStyle({
+                opacity: 1,
+                fillOpacity: 0.95,
+                weight: 2,
+                color: '#ffffff'
+              });
+            } else if (ageSec <= 25) {
+              // 6-25s: Medium decay (smooth shrink to radius 4, opacity ~38%)
+              const factor = (ageSec - 6) / 19;
+              const radius = 6 - factor * 2;
+              const op = 0.95 - factor * 0.57;
+              entry.marker.setRadius(radius);
+              entry.marker.setStyle({
+                opacity: op,
+                fillOpacity: op,
+                weight: 1.2,
+                color: entry.type === 'blocked' ? '#fca5a5' : '#86efac'
+              });
+            } else {
+              // 25-60s: Faint phosphor trace (discreet residue, radius 2.8, opacity ~12%)
+              const factor = (ageSec - 25) / 35;
+              const radius = 4 - factor * 1.2;
+              const op = Math.max(0.08, 0.38 - factor * 0.28);
+              entry.marker.setRadius(radius);
+              entry.marker.setStyle({
+                opacity: op,
+                fillOpacity: op,
+                weight: 1,
+                color: entry.type === 'blocked' ? '#ef4444' : '#10b981'
+              });
+            }
+          }
+        }
       }
     });
 
@@ -1944,4 +1987,150 @@ function emitRadarRippleRing(lat, lng, color) {
       } catch (e) {}
     }
   }, 80);
+}
+
+// Option 3: Ballistic Geodesic Traffic Beams with Firewall Interception
+function createCurvedPathPoints(start, end, numPoints = 22) {
+  const [lat1, lng1] = start;
+  const [lat2, lng2] = end;
+  
+  const dLat = lat2 - lat1;
+  const dLng = lng2 - lng1;
+  const dist = Math.sqrt(dLat * dLat + dLng * dLng);
+  
+  if (dist < 1.0) return [[lat1, lng1], [lat2, lng2]];
+
+  // Arc bend height proportional to distance
+  const bend = Math.min(22, dist * 0.20);
+  const midLat = (lat1 + lat2) / 2 + bend;
+  const midLng = (lng1 + lng2) / 2;
+
+  const points = [];
+  for (let i = 0; i <= numPoints; i++) {
+    const t = i / numPoints;
+    // Quadratic Bezier interpolation
+    const lat = (1 - t) * (1 - t) * lat1 + 2 * (1 - t) * t * midLat + t * t * lat2;
+    const lng = (1 - t) * (1 - t) * lng1 + 2 * (1 - t) * t * midLng + t * t * lng2;
+    points.push([lat, lng]);
+  }
+  return points;
+}
+
+function launchTrafficBeam(start, isBlocked) {
+  if (!radarMapInstance) return;
+
+  const SP_HUB = [-23.5505, -46.6333];
+  const color = isBlocked ? '#ef4444' : '#10b981';
+  
+  const arcPoints = createCurvedPathPoints(start, SP_HUB, 22);
+  if (arcPoints.length < 2) return;
+
+  // For blocked threats, intercept at 78% of the path (firewall perimeter defense)
+  const maxIndex = isBlocked ? Math.floor(arcPoints.length * 0.78) : arcPoints.length - 1;
+
+  // 1. Faint curved trajectory track
+  const trackLine = L.polyline(arcPoints.slice(0, maxIndex + 1), {
+    color: color,
+    weight: 1,
+    opacity: 0.16,
+    dashArray: '3, 6'
+  }).addTo(radarMapInstance);
+
+  // 2. Traveling projectile beam head
+  const projectile = L.circleMarker(arcPoints[0], {
+    radius: isBlocked ? 3.5 : 3,
+    fillColor: color,
+    color: '#ffffff',
+    weight: 1.5,
+    opacity: 0.95,
+    fillOpacity: 0.95
+  }).addTo(radarMapInstance);
+
+  let step = 0;
+  const totalSteps = maxIndex;
+  const stepDuration = 1100 / totalSteps; // ~1.1s flight time
+
+  const beamInterval = setInterval(() => {
+    step++;
+    if (step <= totalSteps && radarMapInstance && radarMapInstance.hasLayer(projectile)) {
+      projectile.setLatLng(arcPoints[step]);
+    } else {
+      clearInterval(beamInterval);
+      
+      if (isBlocked) {
+        // Red threat intercepted: Deflection defense spark burst
+        emitDefenseInterceptSpark(arcPoints[totalSteps]);
+      } else {
+        // Green legit access: Gentle hub arrival reception pulse
+        emitHubReceptionPulse();
+      }
+
+      // Clean up track line and projectile
+      try {
+        if (radarMapInstance) {
+          if (radarMapInstance.hasLayer(projectile)) radarMapInstance.removeLayer(projectile);
+          if (radarMapInstance.hasLayer(trackLine)) radarMapInstance.removeLayer(trackLine);
+        }
+      } catch (e) {}
+    }
+  }, stepDuration);
+}
+
+function emitDefenseInterceptSpark(coord) {
+  if (!radarMapInstance) return;
+  const spark = L.circleMarker(coord, {
+    radius: 4,
+    fillColor: '#ef4444',
+    color: '#fbbf24', // Amber/gold shield spark
+    weight: 2,
+    opacity: 1,
+    fillOpacity: 0.9
+  }).addTo(radarMapInstance);
+
+  let rad = 4;
+  let op = 1;
+  const sparkInt = setInterval(() => {
+    rad += 1.4;
+    op -= 0.16;
+    if (spark && radarMapInstance && radarMapInstance.hasLayer(spark)) {
+      spark.setRadius(rad);
+      spark.setStyle({ opacity: Math.max(0, op), fillOpacity: Math.max(0, op) });
+    }
+    if (op <= 0) {
+      clearInterval(sparkInt);
+      try {
+        if (radarMapInstance && radarMapInstance.hasLayer(spark)) radarMapInstance.removeLayer(spark);
+      } catch (e) {}
+    }
+  }, 40);
+}
+
+function emitHubReceptionPulse() {
+  if (!radarMapInstance) return;
+  const SP_HUB = [-23.5505, -46.6333];
+  const pulse = L.circleMarker(SP_HUB, {
+    radius: 8,
+    fillColor: '#10b981',
+    color: '#00f0ff',
+    weight: 1.5,
+    opacity: 0.8,
+    fillOpacity: 0.3
+  }).addTo(radarMapInstance);
+
+  let rad = 8;
+  let op = 0.8;
+  const pulseInt = setInterval(() => {
+    rad += 1.4;
+    op -= 0.12;
+    if (pulse && radarMapInstance && radarMapInstance.hasLayer(pulse)) {
+      pulse.setRadius(rad);
+      pulse.setStyle({ opacity: Math.max(0, op), fillOpacity: Math.max(0, op) });
+    }
+    if (op <= 0) {
+      clearInterval(pulseInt);
+      try {
+        if (radarMapInstance && radarMapInstance.hasLayer(pulse)) radarMapInstance.removeLayer(pulse);
+      } catch (e) {}
+    }
+  }, 40);
 }
