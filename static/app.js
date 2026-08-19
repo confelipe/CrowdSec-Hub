@@ -1766,7 +1766,7 @@ async function fetchAndRenderRadarEvents() {
 
       const ageSec = (now - evtTime) / 1000;
       const isBlocked = (evt.type === 'blocked');
-      const maxLifespanSec = isBlocked ? 10 : 60; // Blocked threats disappear in 10s
+      const maxLifespanSec = isBlocked ? 10 : 30; // Blocked: 10s | Legit: 30s
 
       // Retain in active phosphor window
       if (ageSec <= maxLifespanSec) {
@@ -1826,11 +1826,11 @@ async function fetchAndRenderRadarEvents() {
       }
     });
 
-    // 2. Apply Age-based Phosphor Trail Decay (10s for Blocked, 60s for Legit)
+    // 2. Apply Age-based Phosphor Trail Decay (10s for Blocked, 30s for Legit)
     radarActiveMarkersMap.forEach((entry, key) => {
       const ageSec = (now - entry.timestamp) / 1000;
       const isBlocked = (entry.type === 'blocked');
-      const maxLifespanSec = isBlocked ? 10 : 60;
+      const maxLifespanSec = isBlocked ? 10 : 30;
       const isVisible = isBlocked ? showRadarThreats : showRadarLegit;
 
       if (ageSec > maxLifespanSec) {
@@ -1885,9 +1885,9 @@ async function fetchAndRenderRadarEvents() {
                 });
               }
             } else {
-              // 60s Lifespan for Legitimate Traffic
-              if (ageSec <= 6) {
-                // 0-6s: Fresh impact
+              // 30s Lifespan for Legitimate Traffic
+              if (ageSec <= 4) {
+                // 0-4s: Fresh arrival (bright, radius 6, white border)
                 entry.marker.setRadius(6);
                 entry.marker.setStyle({
                   opacity: 1,
@@ -1895,11 +1895,11 @@ async function fetchAndRenderRadarEvents() {
                   weight: 2,
                   color: '#ffffff'
                 });
-              } else if (ageSec <= 25) {
-                // 6-25s: Medium decay (smooth shrink to radius 4, opacity ~38%)
-                const factor = (ageSec - 6) / 19;
-                const radius = 6 - factor * 2;
-                const op = 0.95 - factor * 0.57;
+              } else if (ageSec <= 15) {
+                // 4-15s: Smooth decay (shrink to radius 3.8, opacity ~35%)
+                const factor = (ageSec - 4) / 11;
+                const radius = 6 - factor * 2.2;
+                const op = 0.95 - factor * 0.60;
                 entry.marker.setRadius(radius);
                 entry.marker.setStyle({
                   opacity: op,
@@ -1908,10 +1908,10 @@ async function fetchAndRenderRadarEvents() {
                   color: '#86efac'
                 });
               } else {
-                // 25-60s: Faint phosphor trace (discreet residue, radius 2.8, opacity ~12%)
-                const factor = (ageSec - 25) / 35;
-                const radius = 4 - factor * 1.2;
-                const op = Math.max(0.08, 0.38 - factor * 0.28);
+                // 15-30s: Faint phosphor trace (radius 2.5, opacity ~8%)
+                const factor = (ageSec - 15) / 15;
+                const radius = 3.8 - factor * 1.3;
+                const op = Math.max(0.06, 0.35 - factor * 0.27);
                 entry.marker.setRadius(radius);
                 entry.marker.setStyle({
                   opacity: op,
