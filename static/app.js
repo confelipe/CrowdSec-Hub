@@ -1807,16 +1807,21 @@ async function fetchAndRenderRadarEvents() {
 function emitRadarPulseMarker(evt) {
   if (!radarMapInstance) return;
 
-  // Add micro-jitter to prevent markers from stacking directly on top of each other
-  const jitterLat = (Math.random() - 0.5) * 1.1;
-  const jitterLng = (Math.random() - 0.5) * 1.1;
-  const lat = (evt.lat || 0) + jitterLat;
-  const lng = (evt.lng || 0) + jitterLng;
+  const lat = evt.lat;
+  const lng = evt.lng;
+  if (lat === undefined || lng === undefined) return;
+
   const isBlocked = (evt.type === 'blocked');
 
-  // Custom DivIcon for ephemeral pulse
+  // Custom DivIcon with inner HTML container so animations never touch Leaflet translate3d position
   const pulseIcon = L.divIcon({
-    className: isBlocked ? 'radar-pulse-marker-red' : 'radar-pulse-marker-green',
+    className: 'radar-pulse-marker',
+    html: `
+      <div class="radar-pulse-inner ${isBlocked ? 'radar-pulse-red' : 'radar-pulse-green'}">
+        <div class="radar-dot-core"></div>
+        <div class="radar-dot-ripple"></div>
+      </div>
+    `,
     iconSize: [24, 24],
     iconAnchor: [12, 12]
   });
