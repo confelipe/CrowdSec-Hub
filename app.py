@@ -809,8 +809,10 @@ async def get_radar_events():
         {"city": "Lisboa", "region": "Lisboa", "country": "PT", "lat": 38.7223, "lng": -9.1393, "ip": "213.13.88.90", "as": "Altice Portugal", "service": "Open Labs Corporate Hub"}
     ]
 
-    now_ts = datetime.now(timezone.utc).isoformat()
+    now_utc = datetime.now(timezone.utc)
+    now_ts = now_utc.isoformat()
     for idx, l in enumerate(legit_origins):
+        legit_time = (now_utc - timedelta(seconds=(idx * 3 + 1))).isoformat()
         events.append({
             "id": f"legit-{idx}",
             "type": "legit",
@@ -827,7 +829,7 @@ async def get_radar_events():
             "target_service": l["service"],
             "network_type": "ISP RESIDENCIAL / CORPORATIVO FIBRA",
             "network_badge": "badge-success",
-            "timestamp": now_ts
+            "timestamp": legit_time
         })
 
     return {

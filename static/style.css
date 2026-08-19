@@ -3099,6 +3099,25 @@ select option,
   margin-bottom: 4px;
 }
 
+.ticker-top-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ticker-time {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
 .ticker-ip {
   font-family: var(--font-mono);
   font-size: 0.8rem;

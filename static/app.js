@@ -1783,19 +1783,39 @@ async function fetchAndRenderRadarEvents() {
         if (legitEvents[i]) interleaved.push(legitEvents[i]);
       }
 
-      const tickerHtml = interleaved.map(e => `
-        <div class="ticker-item ${e.type}" onclick="openThreatDossier('${e.ip}')" title="Clique para abrir o Dossiê Forense">
-          <div class="ticker-top">
-            <span class="ticker-ip">${e.ip}</span>
-            <span class="badge ${e.type === 'blocked' ? 'badge-danger' : 'badge-success'}">${e.action}</span>
+      const tickerHtml = interleaved.map(e => {
+        let timeStr = '';
+        if (e.timestamp) {
+          try {
+            const d = new Date(e.timestamp);
+            if (!isNaN(d.getTime())) {
+              timeStr = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            } else {
+              const parts = e.timestamp.split(' ');
+              timeStr = parts.length > 1 ? parts[1].substring(0, 8) : e.timestamp.substring(11, 19);
+            }
+          } catch (err) {
+            timeStr = '';
+          }
+        }
+
+        return `
+          <div class="ticker-item ${e.type}" onclick="openThreatDossier('${e.ip}')" title="Clique para abrir o Dossiê Forense">
+            <div class="ticker-top">
+              <span class="ticker-ip">${e.ip}</span>
+              <div class="ticker-top-right">
+                ${timeStr ? `<span class="ticker-time">⏱️ ${timeStr}</span>` : ''}
+                <span class="badge ${e.type === 'blocked' ? 'badge-danger' : 'badge-success'}">${e.action}</span>
+              </div>
+            </div>
+            <div class="ticker-loc">
+              <span>📍 ${e.city}, ${e.country}</span>
+              <span style="font-size: 0.68rem; color: var(--text-muted);">${e.rdns_hostname ? e.rdns_hostname.substring(0, 22) : 'rDNS'}</span>
+            </div>
+            ${e.type === 'blocked' ? `<div class="ticker-scen">⚠️ ${e.scenario} &bull; ${e.target_service}</div>` : `<div style="font-size: 0.7rem; color: #86efac; margin-top: 2px;">🟢 ${e.target_service}</div>`}
           </div>
-          <div class="ticker-loc">
-            <span>📍 ${e.city}, ${e.country}</span>
-            <span style="font-size: 0.68rem; color: var(--text-muted);">${e.rdns_hostname ? e.rdns_hostname.substring(0, 22) : 'rDNS'}</span>
-          </div>
-          ${e.type === 'blocked' ? `<div class="ticker-scen">⚠️ ${e.scenario} &bull; ${e.target_service}</div>` : `<div style="font-size: 0.7rem; color: #86efac; margin-top: 2px;">🟢 ${e.target_service}</div>`}
-        </div>
-      `).join('');
+        `;
+      }).join('');
       tickerContainer.innerHTML = tickerHtml;
     }
 
