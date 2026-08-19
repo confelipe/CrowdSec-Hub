@@ -1858,12 +1858,21 @@ function emitRadarPulseMarker(evt) {
     } catch (e) {}
   });
 
-  // Auto-remove marker after 3.5 seconds UNLESS the user clicked and has the popup open
+  // Trigger smooth fade-out at 3.0s, and remove from map at 3.7s
+  setTimeout(() => {
+    if (!isPopupOpen) {
+      const el = marker.getElement();
+      if (el) {
+        el.classList.add('radar-marker-fade-out');
+      }
+    }
+  }, 3000);
+
   setTimeout(() => {
     try {
       if (!isPopupOpen && radarMapInstance && radarMapInstance.hasLayer(marker)) {
         radarMapInstance.removeLayer(marker);
       }
     } catch (e) {}
-  }, 3500);
+  }, 3700);
 }
