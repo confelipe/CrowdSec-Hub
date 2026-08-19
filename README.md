@@ -1,4 +1,4 @@
-# 🛡️ CrowdSec Hub | OpenLabs Security & Threat Intelligence
+# 🛡️ CrowdSec Hub | Security & Threat Intelligence
 
 Painel Executivo e Centro de Comando em Tempo Real para mitigação de ameaças, telemetria de tráfego, conformidade (LGPD/ISO 27001) e monitoramento de segurança com **CrowdSec IPS/WAF**, **Traefik Ingress Proxy**, **Loki/Promtail** e **Wazuh SIEM Central**.
 
@@ -96,5 +96,4 @@ O dashboard estará disponível em: `http://<IP_DO_SERVIDOR>:8090`
 
 ## 📄 Licença & Propriedade
 
-Desenvolvido para **OpenLabs Tecnologia S.A.**  
 Classificação: **Uso Interno / Segurança da Informação**

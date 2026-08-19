@@ -1,6 +1,5 @@
 # 📊 Metodologia e Cálculo das Métricas Executivas de Segurança
 **Projeto:** CrowdSec & Traefik Ingress Protection  
-**Organização:** OpenLabs Tecnologia S.A.  
 **Ambiente:** Edge Ingress Inbound (`10.51.211.13`)  
 **Data:** 18 de Agosto de 2026  
 
@@ -30,7 +29,7 @@ $$\text{Horas Economizadas} = \frac{1.504 \times 6}{60} = \mathbf{150{,}4\text{ 
 
 ### 💼 Impacto para a Diretoria
 - **Equivalência em FTE (*Full-Time Equivalent*):** 150,4 horas representam praticamente **1 profissional de segurança/infraestrutura dedicado em tempo integral** (160h/mês) apenas para analisar e bloquear ataques manualmente.
-- O CrowdSec liberou a equipe técnica para focar em projetos estratégicos de inovação e entrega de produtos para clientes OpenLabs.
+- O CrowdSec liberou a equipe técnica para focar em projetos estratégicos de inovação e entrega de produtos.
 
 ---
 
@@ -71,7 +70,7 @@ $$\text{Custo Evitado} = (1.504 \times \text{R\$} 35{,}00) + \text{R\$} 12.000{,
 
 ### 📌 Premissa de Continuidade de Negócios
 Sistemas de bloqueio agressivos frequentemente impactam colaboradores legítimos (falsos positivos). Para garantir continuidade total:
-- Implementou-se a Whitelist Corporativa em `/etc/crowdsec/parsers/s02-enrich/openlabs-whitelist.yaml`.
+- Implementou-se a Whitelist Corporativa em `/etc/crowdsec/parsers/s02-enrich/whitelist.yaml`.
 - Faixas cadastradas: Sub-rede corporativa `10.51.172.0/22`, IPs de VPN e escritórios.
 
 ### 🔢 Resultado no Ambiente
@@ -85,7 +84,7 @@ Sistemas de bloqueio agressivos frequentemente impactam colaboradores legítimos
 ### 📌 Metodologia de Ponderação (*Defense-in-Depth Framework*)
 Em governança e auditoria de segurança (ISO 27001 / NIST / CIS Controls), **não existe risco 0% ou 100% de segurança absoluta**. O score pondera 5 pilares fundamentais de blindagem:
 
-| Pilar de Segurança | Peso | Cobertura OpenLabs | Pontos Obtidos |
+| Pilar de Segurança | Peso | Cobertura da Infraestrutura | Pontos Obtidos |
 | :--- | :---: | :--- | :---: |
 | **1. Cobertura do WAF / CrowdSec Bouncer** | **35%** | 5 de 5 routers Traefik com Bouncer ativo em modo Live | **35.0%** |
 | **2. Criptografia em Trânsito (TLS)** | **25%** | 100% dos endpoints forçando TLS 1.3 e certificados válidos | **25.0%** |
@@ -112,10 +111,10 @@ O CrowdSec identificou que **`76.4% das varreduras hostis`** são oriundas de gr
 
 ### 📌 Decisões Preventivas
 - **24.650 IPs maliciosos** estão registrados na base de decisões ativas.
-- A maioria desses IPs foi bloqueada **preventivamente** via lista global de CTI antes mesmo de tentarem qualquer conexão contra os servidores da OpenLabs.
+- A maioria desses IPs foi bloqueada **preventivamente** via lista global de CTI antes mesmo de tentarem qualquer conexão contra os servidores corporativos.
 
 ---
 
 ## 📋 Resumo Executivo para Reunião de Diretoria
 
-> *"A implementação do CrowdSec no Ingress Traefik consolidou uma economia operacional de **150+ horas de engenharia por mês**, mitigou autonomamente mais de **1.500 tentativas de invasão** com tempo de resposta inferior a **43 milissegundos**, evitando um custo estimado de **R$ 64.600** em incidentes e indisponibilidade, com **zero impacto** aos colaboradores da OpenLabs."*
+> *"A implementação do CrowdSec no Ingress Traefik consolidou uma economia operacional de **150+ horas de engenharia por mês**, mitigou autonomamente mais de **1.500 tentativas de invasão** com tempo de resposta inferior a **43 milissegundos**, evitando um custo estimado de **R$ 64.600** em incidentes e indisponibilidade, com **zero impacto** aos colaboradores e operações da empresa."*
