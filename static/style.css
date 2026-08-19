@@ -124,20 +124,18 @@ body.dark-theme {
   margin-bottom: 20px;
 }
 
-.brand-logo-wrap {
-  width: 52px;
-  height: 38px;
+.brand-icon {
+  width: 42px;
+  height: 42px;
+  background: linear-gradient(135deg, var(--brand-navy, #002244), var(--brand-teal, #008fa8));
+  border: 1px solid rgba(0, 143, 168, 0.4);
+  border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
+  color: #ffffff;
+  box-shadow: 0 0 15px rgba(0, 143, 168, 0.35);
   flex-shrink: 0;
-}
-
-.brand-openlabs-img {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-  filter: drop-shadow(0 0 8px rgba(0, 163, 196, 0.4));
 }
 
 .brand-info h2 {
