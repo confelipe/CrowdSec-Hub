@@ -1765,11 +1765,12 @@ async function fetchAndRenderRadarEvents() {
       if (isNaN(evtTime)) return;
 
       const ageSec = (now - evtTime) / 1000;
+      const isBlocked = (evt.type === 'blocked');
+      const maxLifespanSec = isBlocked ? 30 : 60; // Blocked threats disappear in half the time (30s)
 
-      // Retain in active phosphor window for 60 seconds
-      if (ageSec <= 60) {
+      // Retain in active phosphor window
+      if (ageSec <= maxLifespanSec) {
         const key = evt.id || `${evt.ip}_${evt.type}`;
-        const isBlocked = (evt.type === 'blocked');
         const color = isBlocked ? '#ef4444' : '#10b981';
         const isVisible = isBlocked ? showRadarThreats : showRadarLegit;
 
@@ -1825,12 +1826,14 @@ async function fetchAndRenderRadarEvents() {
       }
     });
 
-    // 2. Apply Age-based Phosphor Trail Decay & Clean up expired (>60s) markers
+    // 2. Apply Age-based Phosphor Trail Decay (30s for Blocked, 60s for Legit)
     radarActiveMarkersMap.forEach((entry, key) => {
       const ageSec = (now - entry.timestamp) / 1000;
-      const isVisible = (entry.type === 'blocked') ? showRadarThreats : showRadarLegit;
+      const isBlocked = (entry.type === 'blocked');
+      const maxLifespanSec = isBlocked ? 30 : 60;
+      const isVisible = isBlocked ? showRadarThreats : showRadarLegit;
 
-      if (ageSec > 60) {
+      if (ageSec > maxLifespanSec) {
         if (radarMapInstance && radarMapInstance.hasLayer(entry.marker)) {
           radarMapInstance.removeLayer(entry.marker);
         }
@@ -1845,40 +1848,78 @@ async function fetchAndRenderRadarEvents() {
           }
 
           if (isVisible && hasLayer) {
-            // Smooth phosphor decay curve based on age (Option 1)
-            if (ageSec <= 6) {
-              // 0-6s: Fresh impact (bright, radius 6, white border)
-              entry.marker.setRadius(6);
-              entry.marker.setStyle({
-                opacity: 1,
-                fillOpacity: 0.95,
-                weight: 2,
-                color: '#ffffff'
-              });
-            } else if (ageSec <= 25) {
-              // 6-25s: Medium decay (smooth shrink to radius 4, opacity ~38%)
-              const factor = (ageSec - 6) / 19;
-              const radius = 6 - factor * 2;
-              const op = 0.95 - factor * 0.57;
-              entry.marker.setRadius(radius);
-              entry.marker.setStyle({
-                opacity: op,
-                fillOpacity: op,
-                weight: 1.2,
-                color: entry.type === 'blocked' ? '#fca5a5' : '#86efac'
-              });
+            if (isBlocked) {
+              // 30s Lifespan for Blocked Attacks (Half time)
+              if (ageSec <= 4) {
+                // 0-4s: Fresh impact (bright, radius 6, white border)
+                entry.marker.setRadius(6);
+                entry.marker.setStyle({
+                  opacity: 1,
+                  fillOpacity: 0.95,
+                  weight: 2,
+                  color: '#ffffff'
+                });
+              } else if (ageSec <= 15) {
+                // 4-15s: Fast decay (shrink to radius 3.5, opacity ~30%)
+                const factor = (ageSec - 4) / 11;
+                const radius = 6 - factor * 2.5;
+                const op = 0.95 - factor * 0.65;
+                entry.marker.setRadius(radius);
+                entry.marker.setStyle({
+                  opacity: op,
+                  fillOpacity: op,
+                  weight: 1.2,
+                  color: '#fca5a5'
+                });
+              } else {
+                // 15-30s: Faint residue before disappearing (radius 2.5, opacity ~10%)
+                const factor = (ageSec - 15) / 15;
+                const radius = 3.5 - factor * 1.0;
+                const op = Math.max(0.06, 0.30 - factor * 0.24);
+                entry.marker.setRadius(radius);
+                entry.marker.setStyle({
+                  opacity: op,
+                  fillOpacity: op,
+                  weight: 1,
+                  color: '#ef4444'
+                });
+              }
             } else {
-              // 25-60s: Faint phosphor trace (discreet residue, radius 2.8, opacity ~12%)
-              const factor = (ageSec - 25) / 35;
-              const radius = 4 - factor * 1.2;
-              const op = Math.max(0.08, 0.38 - factor * 0.28);
-              entry.marker.setRadius(radius);
-              entry.marker.setStyle({
-                opacity: op,
-                fillOpacity: op,
-                weight: 1,
-                color: entry.type === 'blocked' ? '#ef4444' : '#10b981'
-              });
+              // 60s Lifespan for Legitimate Traffic
+              if (ageSec <= 6) {
+                // 0-6s: Fresh impact
+                entry.marker.setRadius(6);
+                entry.marker.setStyle({
+                  opacity: 1,
+                  fillOpacity: 0.95,
+                  weight: 2,
+                  color: '#ffffff'
+                });
+              } else if (ageSec <= 25) {
+                // 6-25s: Medium decay (smooth shrink to radius 4, opacity ~38%)
+                const factor = (ageSec - 6) / 19;
+                const radius = 6 - factor * 2;
+                const op = 0.95 - factor * 0.57;
+                entry.marker.setRadius(radius);
+                entry.marker.setStyle({
+                  opacity: op,
+                  fillOpacity: op,
+                  weight: 1.2,
+                  color: '#86efac'
+                });
+              } else {
+                // 25-60s: Faint phosphor trace (discreet residue, radius 2.8, opacity ~12%)
+                const factor = (ageSec - 25) / 35;
+                const radius = 4 - factor * 1.2;
+                const op = Math.max(0.08, 0.38 - factor * 0.28);
+                entry.marker.setRadius(radius);
+                entry.marker.setStyle({
+                  opacity: op,
+                  fillOpacity: op,
+                  weight: 1,
+                  color: '#10b981'
+                });
+              }
             }
           }
         }
