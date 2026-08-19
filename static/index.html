@@ -977,6 +977,34 @@
     </div>
   </div>
 
+  <!-- MODAL: THREAT ACTOR DOSSIER & CORRELATION -->
+  <div class="modal-backdrop" id="modal-threat-dossier">
+    <div class="modal-card modal-lg">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <i data-feather="crosshair" class="text-danger" style="width: 26px; height: 26px;"></i>
+          <div>
+            <h3 id="dossier-title">Dossiê Forense do Atacante</h3>
+            <span class="modal-sub" id="dossier-ip-sub">Correlação de Vulnerabilidade, MITRE ATT&CK e Kill Chain</span>
+          </div>
+        </div>
+        <button class="btn-close" id="btn-close-dossier-modal">&times;</button>
+      </div>
+      <div class="modal-body" id="dossier-body">
+        <div class="loading-td">Carregando correlação forense da ameaça...</div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" id="btn-copy-dossier">
+          <i data-feather="copy"></i> <span>Copiar Dossiê Forense</span>
+        </button>
+        <button type="button" class="btn btn-danger" id="btn-ban-dossier-subnet">
+          <i data-feather="slash"></i> <span id="btn-ban-subnet-label">Bloquear Sub-rede /24</span>
+        </button>
+        <button type="button" class="btn btn-outline" id="btn-close-dossier-btn">Fechar</button>
+      </div>
+    </div>
+  </div>
+
   <script src="/static/topology.js"></script>
   <script src="/static/app.js"></script>
 </body>

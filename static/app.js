@@ -457,7 +457,9 @@ async function loadAlerts(search = '', country = '') {
         <tr>
           <td style="font-family: var(--font-mono); color: var(--text-muted);">#${a.id}</td>
           <td>
-            <span class="ip-badge">${a.source_ip || 'Desconhecido'}</span>
+            <a href="javascript:void(0)" class="ip-dossier-link" onclick="openThreatDossier('${a.source_ip}')" title="Clique para abrir o Dossiê Forense do Atacante">
+              <span class="ip-badge">${a.source_ip || 'Desconhecido'} 🔍</span>
+            </a>
             <span class="asn-tag">${a.source_as_name ? a.source_as_name.substring(0, 30) : 'ASN N/A'}</span>
           </td>
           <td>
@@ -502,7 +504,9 @@ async function loadDecisions(search = '') {
         <tr>
           <td style="font-family: var(--font-mono); color: var(--text-muted);">#${d.id}</td>
           <td>
-            <span class="ip-badge">${d.value}</span>
+            <a href="javascript:void(0)" class="ip-dossier-link" onclick="openThreatDossier('${d.value}')" title="Clique para abrir o Dossiê Forense">
+              <span class="ip-badge">${d.value} 🔍</span>
+            </a>
           </td>
           <td><span style="font-size: 0.78rem; text-transform: uppercase;">${d.scope}</span></td>
           <td>
@@ -888,6 +892,7 @@ function setupThreatIntelModal() {
   }
 
   initTechSubtabs();
+  initThreatDossierModal();
 }
 
 // ====================================================
@@ -1074,7 +1079,12 @@ async function loadInspector() {
     tbody.innerHTML = events.map(e => `
       <tr>
         <td><code>${formatDate(e.timestamp)}</code></td>
-        <td><strong>${e.ip}</strong> <span class="badge badge-outline" style="margin-left: 4px;">${e.country}</span></td>
+        <td>
+          <a href="javascript:void(0)" class="ip-dossier-link" onclick="openThreatDossier('${e.ip}')" title="Clique para abrir o Dossiê Forense do Atacante">
+            <span class="ip-badge">${e.ip} 🔍</span>
+          </a>
+          <span class="badge badge-outline" style="margin-left: 4px;">${e.country}</span>
+        </td>
         <td><span class="badge ${e.http_method === 'POST' ? 'badge-warning' : 'badge-info'}">${e.http_method}</span></td>
         <td><code style="color: #f87171; font-size: 0.78rem;">${escapeHtml(e.raw_uri)}</code></td>
         <td><span style="font-size: 0.72rem; color: var(--text-muted);">${escapeHtml(e.user_agent)}</span></td>
@@ -1178,4 +1188,245 @@ function escapeHtml(str) {
             .replace(/>/g, "&gt;")
             .replace(/"/g, "&quot;")
             .replace(/'/g, "&#039;");
+}
+
+// ====================================================
+// THREAT ACTOR DOSSIER & KILL CHAIN CORRELATION MODAL
+// ====================================================
+
+let currentDossierData = null;
+
+function initThreatDossierModal() {
+  const modal = document.getElementById('modal-threat-dossier');
+  const btnCloseX = document.getElementById('btn-close-dossier-modal');
+  const btnClose = document.getElementById('btn-close-dossier-btn');
+  const btnCopy = document.getElementById('btn-copy-dossier');
+  const btnBanSubnet = document.getElementById('btn-ban-dossier-subnet');
+
+  if (btnCloseX && modal) {
+    btnCloseX.addEventListener('click', () => modal.classList.remove('open'));
+  }
+  if (btnClose && modal) {
+    btnClose.addEventListener('click', () => modal.classList.remove('open'));
+  }
+  if (modal) {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.classList.remove('open');
+    });
+  }
+
+  if (btnCopy) {
+    btnCopy.addEventListener('click', () => {
+      if (!currentDossierData) return;
+      const d = currentDossierData;
+      const c = d.correlation;
+      const txt = `
+=====================================================
+DOSSIÊ FORENSE DE CORRELAÇÃO DE AMEAÇA - OPEN LABS S.A.
+=====================================================
+IP Suspeito: ${d.ip}
+Origem: ${d.country} | ASN: ${d.asn.name} (${d.asn.number})
+Status Bouncer: ${d.is_banned ? 'BLOQUEADO (BAN ATIVO)' : 'OBSERVAÇÃO ATIVA'}
+Primeiro Registro: ${d.first_seen}
+Total de Tentativas: ${d.total_alerts}
+
+--- [CORRELAÇÃO DE VULNERABILIDADE] ---
+Vulnerabilidade: ${c.vulnerability_name}
+Código / CVE: ${c.cve_code} (CVSS: ${c.cvss_score} - ${c.severity})
+Classificação CWE: ${c.cwe}
+MITRE ATT&CK: ${c.mitre_attack.tactic} -> ${c.mitre_attack.technique}
+
+--- [OBJETIVO DO ATACANTE] ---
+${c.attacker_intent}
+
+--- [AMOSTRAGEM DE PAYLOAD] ---
+${c.raw_payload_sampled}
+
+--- [AÇÃO DO INGRESS TRAEFIK] ---
+${c.defense_action}
+
+--- [RECOMENDAÇÃO DE HARDENING INTERNO] ---
+${c.internal_remediation}
+=====================================================
+`;
+      navigator.clipboard.writeText(txt.trim()).then(() => {
+        alert('📋 Dossiê Forense copiado para a área de transferência com sucesso!');
+      });
+    });
+  }
+
+  if (btnBanSubnet) {
+    btnBanSubnet.addEventListener('click', async () => {
+      if (!currentDossierData) return;
+      const ip = currentDossierData.ip;
+      const parts = ip.split('.');
+      const subnet = parts.length === 4 ? `${parts[0]}.${parts[1]}.${parts[2]}.0/24` : `${ip}/24`;
+
+      if (!confirm(`Deseja bloquear toda a sub-rede ${subnet} por 24 horas no Traefik Ingress Bouncer?`)) return;
+
+      try {
+        const res = await fetch('/api/decisions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ip: subnet,
+            duration: '24h',
+            reason: `Bloqueio de Sub-rede (${currentDossierData.correlation.cve_code})`,
+            type: 'ban'
+          })
+        });
+        if (res.ok) {
+          alert(`✅ Sub-rede ${subnet} bloqueada com sucesso no Traefik Bouncer!`);
+          loadDecisions();
+          modal.classList.remove('open');
+        } else {
+          alert('Falha ao aplicar bloqueio de sub-rede.');
+        }
+      } catch (err) {
+        alert('Erro: ' + err.message);
+      }
+    });
+  }
+
+  window.openThreatDossier = async function(ip) {
+    if (!ip || ip === 'N/A' || ip === 'Desconhecido') return;
+    const modal = document.getElementById('modal-threat-dossier');
+    const titleEl = document.getElementById('dossier-title');
+    const subEl = document.getElementById('dossier-ip-sub');
+    const bodyEl = document.getElementById('dossier-body');
+    const subnetLbl = document.getElementById('btn-ban-subnet-label');
+
+    titleEl.textContent = `Dossiê Forense: ${ip}`;
+    subEl.textContent = 'Carregando análise e correlação...';
+    bodyEl.innerHTML = '<div class="loading-td">Correlacionando requisições, CVEs e Kill Chain...</div>';
+    modal.classList.add('open');
+
+    try {
+      const res = await fetch(`/api/threat-dossier/${encodeURIComponent(ip)}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const d = await res.json();
+      currentDossierData = d;
+
+      const c = d.correlation;
+      const parts = ip.split('.');
+      const subnetStr = parts.length === 4 ? `${parts[0]}.${parts[1]}.${parts[2]}.0/24` : `${ip}/24`;
+      if (subnetLbl) subnetLbl.textContent = `Bloquear Sub-rede ${subnetStr}`;
+
+      subEl.textContent = `${d.country} • ${d.asn.name} (${d.asn.number}) • ${d.asn.type}`;
+
+      bodyEl.innerHTML = `
+        <!-- Top Bar Overview -->
+        <div class="dossier-header-bar">
+          <div class="dossier-header-ip">
+            <i data-feather="shield-alert" class="text-danger" style="width: 28px; height: 28px;"></i>
+            <div>
+              <strong>${d.ip}</strong>
+              <div style="font-size: 0.75rem; color: var(--text-muted);">Primeiro visto: ${formatDate(d.first_seen)} • ${d.total_alerts} tentativa(s) registradas</div>
+            </div>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <span class="badge ${c.severity === 'CRÍTICA' ? 'badge-danger' : (c.severity === 'ALTA' ? 'badge-warning' : 'badge-info')}">
+              SEVERIDADE ${c.severity} (CVSS ${c.cvss_score})
+            </span>
+            <span class="badge ${d.is_banned ? 'badge-danger' : 'badge-warning'}">
+              ${d.is_banned ? '🛑 BAN ATIVO NA BORDA' : '⚠️ MONITORAMENTO ATIVO'}
+            </span>
+          </div>
+        </div>
+
+        <div class="dossier-grid">
+          <!-- Col 1: Vulnerability Correlation & Objective -->
+          <div class="dossier-card">
+            <div class="dossier-card-title">
+              <i data-feather="target"></i>
+              <span>1. Correlação de Vulnerabilidade & CVE</span>
+            </div>
+
+            <div class="dossier-vuln-banner">
+              <div class="dossier-vuln-header">
+                <span class="dossier-vuln-name">${c.vulnerability_name}</span>
+                <span class="badge badge-danger">${c.cve_code}</span>
+              </div>
+              <div style="font-size: 0.73rem; color: var(--text-muted); display: flex; gap: 10px; margin-top: 4px;">
+                <span><strong>CWE:</strong> ${c.cwe}</span>
+                <span><strong>MITRE:</strong> ${c.mitre_attack.technique}</span>
+              </div>
+            </div>
+
+            <div class="dossier-card-title" style="margin-top: 4px;">
+              <i data-feather="crosshair"></i>
+              <span>2. Qual era o Objetivo do Invasor?</span>
+            </div>
+            <div class="dossier-intent-box">
+              ${c.attacker_intent}
+            </div>
+
+            <div class="dossier-card-title" style="margin-top: 4px;">
+              <i data-feather="code"></i>
+              <span>3. Payload de Exploração Interceptado</span>
+            </div>
+            <div style="background: #090d16; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 8px 12px; margin-bottom: 12px;">
+              <code style="font-family: var(--font-mono); font-size: 0.74rem; color: #f87171; word-break: break-all;">${escapeHtml(c.raw_payload_sampled)}</code>
+            </div>
+
+            <div class="dossier-card-title" style="margin-top: 4px;">
+              <i data-feather="shield-check"></i>
+              <span>4. Plano de Blindagem Interna (Backend)</span>
+            </div>
+            <div style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 0.76rem; color: #cbd5e1; line-height: 1.45; white-space: pre-line;">
+              ${escapeHtml(c.internal_remediation)}
+            </div>
+          </div>
+
+          <!-- Col 2: Attack Kill Chain Timeline & Reputation -->
+          <div class="dossier-card">
+            <div class="dossier-card-title">
+              <i data-feather="clock"></i>
+              <span>Cadeia de Ataque (Kill Chain)</span>
+            </div>
+
+            <div class="kill-chain-timeline">
+              ${d.kill_chain_timeline.map(s => {
+                const isDefense = s.status === 403;
+                return `
+                  <div class="kc-step ${isDefense ? 'defense' : 'active'}">
+                    <div class="kc-dot"></div>
+                    <div class="kc-header">
+                      <span class="kc-phase">${s.phase}</span>
+                      <span class="kc-time">${s.time_offset}</span>
+                    </div>
+                    <div class="kc-desc">${s.desc}</div>
+                    <div class="kc-uri">${escapeHtml(s.uri)}</div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+
+            <div class="dossier-card-title" style="margin-top: 18px;">
+              <i data-feather="globe"></i>
+              <span>Inteligência Global (CTI Consensus)</span>
+            </div>
+            <div style="font-size: 0.76rem; color: var(--text-secondary); line-height: 1.5;">
+              <div class="insp-row" style="margin-bottom: 4px;">
+                <span class="insp-key">Consenso da Rede:</span>
+                <span class="insp-val" style="color: var(--danger); font-weight: 700;">${d.cti_consensus.global_reputation}</span>
+              </div>
+              <div class="insp-row" style="margin-bottom: 4px;">
+                <span class="insp-key">Sensores Globais:</span>
+                <span class="insp-val">${d.cti_consensus.community_reports_count} reportes mundiais</span>
+              </div>
+              <div class="insp-row" style="margin-bottom: 4px;">
+                <span class="insp-key">Tipo de Agente:</span>
+                <span class="insp-val" style="color: var(--primary);">${d.cti_consensus.threat_category}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      feather.replace();
+    } catch (err) {
+      bodyEl.innerHTML = `<div style="color: var(--danger); padding: 20px; text-align: center;">Erro ao carregar dossiê: ${err.message}</div>`;
+    }
+  };
 }
