@@ -1754,19 +1754,36 @@ async function fetchAndRenderRadarEvents() {
 
     if (!events.length) return;
 
-    // Pick 2-4 events per tick to animate
-    const pickedEvents = events.slice(0, 4);
+    // Separate legitimate and blocked events to guarantee balanced simultaneous emission
+    const legitEvents = events.filter(e => e.type === 'legit');
+    const blockedEvents = events.filter(e => e.type === 'blocked');
+
+    const pickedEvents = [];
+
+    if (showRadarLegit && legitEvents.length > 0) {
+      const shuffledLegit = [...legitEvents].sort(() => 0.5 - Math.random());
+      pickedEvents.push(...shuffledLegit.slice(0, 2));
+    }
+
+    if (showRadarThreats && blockedEvents.length > 0) {
+      const shuffledBlocked = [...blockedEvents].sort(() => 0.5 - Math.random());
+      pickedEvents.push(...shuffledBlocked.slice(0, 2));
+    }
 
     pickedEvents.forEach(evt => {
-      if (evt.type === 'blocked' && !showRadarThreats) return;
-      if (evt.type === 'legit' && !showRadarLegit) return;
-
       emitRadarPulseMarker(evt);
     });
 
-    // Update Ticker Stream
+    // Update Ticker Stream with interleaved mix of events
     if (tickerContainer) {
-      const tickerHtml = events.slice(0, 12).map(e => `
+      const interleaved = [];
+      const maxLen = Math.max(blockedEvents.length, legitEvents.length);
+      for (let i = 0; i < maxLen && interleaved.length < 16; i++) {
+        if (blockedEvents[i]) interleaved.push(blockedEvents[i]);
+        if (legitEvents[i]) interleaved.push(legitEvents[i]);
+      }
+
+      const tickerHtml = interleaved.map(e => `
         <div class="ticker-item ${e.type}" onclick="openThreatDossier('${e.ip}')" title="Clique para abrir o Dossiê Forense">
           <div class="ticker-top">
             <span class="ticker-ip">${e.ip}</span>
@@ -1790,8 +1807,11 @@ async function fetchAndRenderRadarEvents() {
 function emitRadarPulseMarker(evt) {
   if (!radarMapInstance) return;
 
-  const lat = evt.lat || 0;
-  const lng = evt.lng || 0;
+  // Add micro-jitter to prevent markers from stacking directly on top of each other
+  const jitterLat = (Math.random() - 0.5) * 1.1;
+  const jitterLng = (Math.random() - 0.5) * 1.1;
+  const lat = (evt.lat || 0) + jitterLat;
+  const lng = (evt.lng || 0) + jitterLng;
   const isBlocked = (evt.type === 'blocked');
 
   // Custom DivIcon for ephemeral pulse
@@ -1824,20 +1844,12 @@ function emitRadarPulseMarker(evt) {
     offset: [0, -10]
   }).openPopup();
 
-  // Draw connecting beam to Open Labs Primary Hub (São Paulo)
-  const spCoord = [-23.5505, -46.6333];
-  const polyline = L.polyline([[lat, lng], spCoord], {
-    color: isBlocked ? '#ef4444' : '#10b981',
-    weight: isBlocked ? 2 : 1.2,
-    opacity: isBlocked ? 0.7 : 0.4,
-    dashArray: isBlocked ? '4, 6' : null
-  }).addTo(radarMapInstance);
-
   // Auto-remove after 3.5 seconds
   setTimeout(() => {
     try {
-      if (radarMapInstance.hasLayer(marker)) radarMapInstance.removeLayer(marker);
-      if (radarMapInstance.hasLayer(polyline)) radarMapInstance.removeLayer(polyline);
+      if (radarMapInstance && radarMapInstance.hasLayer(marker)) {
+        radarMapInstance.removeLayer(marker);
+      }
     } catch (e) {}
   }, 3500);
 }

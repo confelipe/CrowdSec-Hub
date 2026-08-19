@@ -1867,6 +1867,7 @@ async def get_threat_dossier(ip: str):
         }
     ]
 
+    is_currently_banned = len(decisions) > 0
     intel = get_ip_intel_profile(ip, country, as_name)
 
     return {
