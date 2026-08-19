@@ -1208,6 +1208,8 @@ function initThreatDossierModal() {
   const btnCloseX = document.getElementById('btn-close-dossier-modal');
   const btnClose = document.getElementById('btn-close-dossier-btn');
   const btnCopy = document.getElementById('btn-copy-dossier');
+  const btnExportPdf = document.getElementById('btn-export-dossier-pdf');
+  const btnExportJson = document.getElementById('btn-export-dossier-json');
   const btnBanSubnet = document.getElementById('btn-ban-dossier-subnet');
 
   if (btnCloseX && modal) {
@@ -1219,6 +1221,176 @@ function initThreatDossierModal() {
   if (modal) {
     modal.addEventListener('click', (e) => {
       if (e.target === modal) modal.classList.remove('open');
+    });
+  }
+
+  if (btnExportJson) {
+    btnExportJson.addEventListener('click', () => {
+      if (!currentDossierData) return;
+      const jsonStr = JSON.stringify(currentDossierData, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `dossie_forense_${currentDossierData.ip.replace(/[^a-zA-Z0-9]/g, '_')}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+  }
+
+  if (btnExportPdf) {
+    btnExportPdf.addEventListener('click', () => {
+      if (!currentDossierData) return;
+      const d = currentDossierData;
+      const c = d.correlation;
+      const hashId = Math.random().toString(36).substring(2, 10).toUpperCase();
+
+      const printWin = window.open('', '_blank');
+      if (!printWin) {
+        alert('Por favor, permita popups para gerar o laudo pericial em PDF.');
+        return;
+      }
+
+      printWin.document.write(`
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Laudo Forense - ${d.ip} - Open Labs S.A.</title>
+  <style>
+    @page { size: A4 portrait; margin: 12mm; }
+    body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; color: #0f172a; line-height: 1.4; margin: 0; padding: 0; font-size: 10.5pt; }
+    .header { border-bottom: 2px solid #002244; padding-bottom: 10px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: flex-start; }
+    .brand-title { font-size: 15pt; font-weight: 800; color: #002244; text-transform: uppercase; margin: 0; }
+    .brand-sub { font-size: 7.8pt; color: #64748b; margin: 2px 0 0 0; text-transform: uppercase; letter-spacing: 0.5px; }
+    .doc-meta { text-align: right; font-size: 8.5pt; color: #475569; }
+    .doc-meta strong { color: #002244; }
+    
+    .section-title { font-size: 10.5pt; font-weight: 700; color: #002244; border-left: 4px solid #008fa8; padding-left: 8px; margin: 14px 0 8px 0; text-transform: uppercase; }
+    
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+    .card { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 12px; }
+    .card-label { font-size: 7.5pt; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 2px; }
+    .card-val { font-size: 9.5pt; font-weight: 700; color: #0f172a; }
+    
+    .vuln-box { background: #fef2f2; border: 1px solid #fca5a5; border-radius: 6px; padding: 10px 12px; margin-bottom: 10px; }
+    .vuln-header { display: flex; justify-content: space-between; font-weight: 700; color: #991b1b; font-size: 10.5pt; margin-bottom: 4px; }
+    .badge { display: inline-block; padding: 2px 6px; font-size: 7.5pt; font-weight: 700; border-radius: 3px; }
+    .badge-crit { background: #dc2626; color: #ffffff; }
+    .badge-defense { background: #16a34a; color: #ffffff; }
+    
+    .timeline-table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 8.5pt; }
+    .timeline-table th { background: #f1f5f9; text-align: left; padding: 5px 8px; font-size: 7.8pt; color: #475569; border-bottom: 1px solid #cbd5e1; }
+    .timeline-table td { padding: 5px 8px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+    
+    .code-box { background: #0f172a; color: #38bdf8; font-family: monospace; font-size: 8pt; padding: 6px 10px; border-radius: 4px; overflow-x: auto; margin-top: 4px; }
+    
+    .footer { margin-top: 20px; border-top: 1px solid #cbd5e1; padding-top: 8px; display: flex; justify-content: space-between; font-size: 7.5pt; color: #64748b; }
+    .avoid-break { page-break-inside: avoid; break-inside: avoid; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1 class="brand-title">Open Labs S.A.</h1>
+      <p class="brand-sub">Uma empresa do grupo Altice Labs &bull; Centro de Operações de Segurança (SecOps)</p>
+    </div>
+    <div class="doc-meta">
+      <div><strong>LAUDO PERICIAL FORENSE</strong></div>
+      <div>Protocolo: #OLB-SEC-${hashId}</div>
+      <div>Emitido em: ${new Date().toLocaleString('pt-BR')}</div>
+    </div>
+  </div>
+
+  <div class="avoid-break">
+    <div class="section-title">1. Identificação do Atacante & Inteligência de Borda</div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-label">Endereço IP Suspeito / Host</div>
+        <div class="card-val">${d.ip} (${d.country})</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Sistema Autônomo (ASN) / Provedor</div>
+        <div class="card-val">${d.asn.name} (${d.asn.number})</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Status de Contenção no Traefik Bouncer</div>
+        <div class="card-val" style="color: #dc2626;">${d.is_banned ? '🛑 BLOQUEADO (HTTP 403 BAN ATIVO)' : '⚠️ MONITORAMENTO ATIVO'}</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Reputação Global na Comunidade (CTI)</div>
+        <div class="card-val" style="color: #b91c1c;">${d.cti_consensus.global_reputation} (${d.cti_consensus.community_reports_count} reports)</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="avoid-break">
+    <div class="section-title">2. Correlação de Vulnerabilidade & Vetor de Exploração</div>
+    <div class="vuln-box">
+      <div class="vuln-header">
+        <span>${c.vulnerability_name}</span>
+        <span class="badge badge-crit">${c.cve_code} • CVSS ${c.cvss_score}</span>
+      </div>
+      <div style="font-size: 8.5pt; color: #4b5563; margin-bottom: 6px;">
+        <strong>CWE:</strong> ${c.cwe} &bull; <strong>Técnica MITRE ATT&CK:</strong> ${c.mitre_attack.tactic} ➔ ${c.mitre_attack.technique}
+      </div>
+      <div style="font-size: 8.8pt; color: #1f2937; margin-bottom: 6px;">
+        <strong>Intenção do Invasor:</strong> ${c.attacker_intent}
+      </div>
+      <div class="card-label">Amostragem de Payload Interceptado na Borda:</div>
+      <div class="code-box">${escapeHtml(c.raw_payload_sampled)}</div>
+    </div>
+  </div>
+
+  <div class="avoid-break">
+    <div class="section-title">3. Cadeia de Ataque & Resposta do Ingress (Kill Chain Timeline)</div>
+    <table class="timeline-table">
+      <thead>
+        <tr>
+          <th style="width: 12%;">Tempo</th>
+          <th style="width: 25%;">Fase Tática</th>
+          <th style="width: 45%;">Ação / Requisição</th>
+          <th style="width: 18%;">Status HTTP</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${d.kill_chain_timeline.map(s => `
+          <tr>
+            <td><code>${s.time_offset}</code></td>
+            <td><strong>${s.phase}</strong></td>
+            <td>${escapeHtml(s.uri)}<br><small style="color: #64748b;">${s.desc}</small></td>
+            <td><span class="badge ${s.status === 403 ? 'badge-defense' : 'badge-crit'}">HTTP ${s.status}</span></td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="avoid-break" style="margin-top: 12px;">
+    <div class="section-title">4. Plano de Remediação & Blindagem Interna Recomendada</div>
+    <div class="card" style="background: #f0fdf4; border-color: #86efac;">
+      <p style="font-size: 8.5pt; color: #166534; line-height: 1.4; margin: 0; white-space: pre-line;">${escapeHtml(c.internal_remediation)}</p>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div>Open Labs S.A. &bull; CrowdSec Traefik Security Hub &bull; Relatório Pericial Auditável</div>
+    <div>Página 1 de 1 &bull; Autenticidade Garantida</div>
+  </div>
+
+  <script>
+    window.onload = function() {
+      setTimeout(() => {
+        window.print();
+      }, 300);
+    };
+  <\/script>
+</body>
+</html>
+      `);
+      printWin.document.close();
     });
   }
 

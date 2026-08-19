@@ -993,9 +993,15 @@
       <div class="modal-body" id="dossier-body">
         <div class="loading-td">Carregando correlação forense da ameaça...</div>
       </div>
-      <div class="modal-footer">
+      <div class="modal-footer" style="flex-wrap: wrap; gap: 8px;">
+        <button type="button" class="btn btn-primary" id="btn-export-dossier-pdf">
+          <i data-feather="printer"></i> <span>Exportar Laudo PDF</span>
+        </button>
+        <button type="button" class="btn btn-outline" id="btn-export-dossier-json">
+          <i data-feather="download"></i> <span>Exportar JSON</span>
+        </button>
         <button type="button" class="btn btn-outline" id="btn-copy-dossier">
-          <i data-feather="copy"></i> <span>Copiar Dossiê Forense</span>
+          <i data-feather="copy"></i> <span>Copiar Texto</span>
         </button>
         <button type="button" class="btn btn-danger" id="btn-ban-dossier-subnet">
           <i data-feather="slash"></i> <span id="btn-ban-subnet-label">Bloquear Sub-rede /24</span>
