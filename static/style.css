@@ -3141,12 +3141,10 @@ select option,
 
 /* Ephemeral Pulse Marker Animations */
 .radar-pulse-marker {
-  position: absolute;
+  position: relative;
   width: 24px;
   height: 24px;
-  margin: 0;
-  padding: 0;
-  pointer-events: auto;
+  display: block;
 }
 
 .radar-pulse-inner {
@@ -3155,21 +3153,21 @@ select option,
   top: 0;
   width: 24px;
   height: 24px;
+  pointer-events: auto;
+  cursor: pointer;
   animation: radarMarkerFadeIn 0.5s ease-out forwards;
-  transition: opacity 0.6s ease, transform 0.6s ease, filter 0.6s ease;
-  will-change: opacity, transform, filter;
+  transition: opacity 0.6s ease, transform 0.6s ease;
 }
 
 @keyframes radarMarkerFadeIn {
   0% { opacity: 0; transform: scale(0.2); }
-  60% { opacity: 0.9; transform: scale(1.1); }
+  60% { opacity: 0.95; transform: scale(1.1); }
   100% { opacity: 1; transform: scale(1); }
 }
 
 .radar-marker-fade-out .radar-pulse-inner {
   opacity: 0 !important;
   transform: scale(1.4) !important;
-  filter: blur(4px) !important;
 }
 
 /* Red (Threat) Pulse Marker */
@@ -3177,26 +3175,27 @@ select option,
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 10px;
-  height: 10px;
-  margin-left: -5px;
-  margin-top: -5px;
+  width: 12px;
+  height: 12px;
+  transform: translate(-50%, -50%);
   background: #ef4444;
+  border: 2px solid #ffffff;
   border-radius: 50%;
   box-shadow: 0 0 14px #ef4444;
+  z-index: 2;
 }
 
 .radar-pulse-red .radar-dot-ripple {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 32px;
-  height: 32px;
-  margin-left: -16px;
-  margin-top: -16px;
+  width: 34px;
+  height: 34px;
+  transform: translate(-50%, -50%);
   border: 2px solid #ef4444;
   border-radius: 50%;
   animation: radarRipple 1.8s infinite ease-out;
+  z-index: 1;
 }
 
 /* Green (Legit) Pulse Marker */
@@ -3204,32 +3203,33 @@ select option,
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 8px;
-  height: 8px;
-  margin-left: -4px;
-  margin-top: -4px;
+  width: 10px;
+  height: 10px;
+  transform: translate(-50%, -50%);
   background: #10b981;
+  border: 2px solid #ffffff;
   border-radius: 50%;
   box-shadow: 0 0 12px #10b981;
+  z-index: 2;
 }
 
 .radar-pulse-green .radar-dot-ripple {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 26px;
-  height: 26px;
-  margin-left: -13px;
-  margin-top: -13px;
+  width: 28px;
+  height: 28px;
+  transform: translate(-50%, -50%);
   border: 2px solid #10b981;
   border-radius: 50%;
   animation: radarRipple 1.8s infinite ease-out;
+  z-index: 1;
 }
 
 @keyframes radarRipple {
-  0% { transform: scale(0.3); opacity: 0.9; }
+  0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0.95; }
   50% { opacity: 0.6; }
-  100% { transform: scale(1.6); opacity: 0; }
+  100% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
 }
 
 /* Ephemeral live popup styling */

@@ -1764,9 +1764,24 @@ async function fetchAndRenderRadarEvents() {
     // Sort strictly chronological: latest timestamp at the very top (index 0)
     filteredEvents.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
-    // Emit pulses on the map for the 2 newest events
-    const newestEvents = filteredEvents.slice(0, 2);
-    newestEvents.forEach(evt => emitRadarPulseMarker(evt));
+    // Separate active legit and blocked events to ensure both types pulse simultaneously on the map
+    const activeLegit = filteredEvents.filter(e => e.type === 'legit');
+    const activeBlocked = filteredEvents.filter(e => e.type === 'blocked');
+
+    const pickedPulses = [];
+    if (showRadarLegit && activeLegit.length > 0) {
+      // Pick 2 random / rotating legit events
+      const shuffledLegit = [...activeLegit].sort(() => 0.5 - Math.random());
+      pickedPulses.push(...shuffledLegit.slice(0, 2));
+    }
+    if (showRadarThreats && activeBlocked.length > 0) {
+      // Pick 2 random / rotating threat events
+      const shuffledBlocked = [...activeBlocked].sort(() => 0.5 - Math.random());
+      pickedPulses.push(...shuffledBlocked.slice(0, 2));
+    }
+
+    // Emit pulses on the map
+    pickedPulses.forEach(evt => emitRadarPulseMarker(evt));
 
     // Update Ticker Stream strictly in chronological descending order (newest on top)
     if (tickerContainer) {
