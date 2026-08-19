@@ -1787,20 +1787,24 @@ async function fetchAndRenderRadarEvents() {
           }
         }
 
+        const isBlocked = (e.type === 'blocked');
+        const statusLabel = isBlocked ? '🛑 403 BAN' : '🟢 200 OK';
+
         return `
           <div class="ticker-item ${e.type} ${idx === 0 ? 'ticker-item-new' : ''}" onclick="openThreatDossier('${e.ip}')" title="Clique para abrir o Dossiê Forense">
-            <div class="ticker-top">
+            <div class="ticker-header-row">
               <span class="ticker-ip">${e.ip}</span>
-              <div class="ticker-top-right">
-                ${timeStr ? `<span class="ticker-time">⏱️ ${timeStr}</span>` : ''}
-                <span class="badge ${e.type === 'blocked' ? 'badge-danger' : 'badge-success'}">${e.action}</span>
-              </div>
+              <span class="ticker-loc-tag">📍 ${e.city}, ${e.country}</span>
             </div>
-            <div class="ticker-loc">
-              <span>📍 ${e.city}, ${e.country}</span>
-              <span style="font-size: 0.68rem; color: var(--text-muted);">${e.rdns_hostname ? e.rdns_hostname.substring(0, 22) : 'rDNS'}</span>
+            <div class="ticker-meta-row">
+              ${timeStr ? `<span class="ticker-pill time">⏱️ ${timeStr}</span>` : ''}
+              <span class="ticker-pill status ${e.type}">${statusLabel}</span>
+              <span class="ticker-service-name">${escapeHtml(e.target_service)}</span>
             </div>
-            ${e.type === 'blocked' ? `<div class="ticker-scen">⚠️ ${e.scenario} &bull; ${e.target_service}</div>` : `<div style="font-size: 0.7rem; color: #86efac; margin-top: 2px;">🟢 ${e.target_service}</div>`}
+            ${isBlocked 
+              ? `<div class="ticker-scen">⚠️ ${escapeHtml(e.scenario)}</div>` 
+              : `<div class="ticker-rdns">${escapeHtml(e.rdns_hostname || 'Tráfego Legítimo Borda Ingress')}</div>`
+            }
           </div>
         `;
       }).join('');
