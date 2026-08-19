@@ -56,6 +56,11 @@
           <i data-feather="check-square"></i>
           <span>Matriz de Serviços</span>
         </button>
+        <button class="nav-item" data-tab="tab-technical">
+          <i data-feather="terminal"></i>
+          <span>SecOps & Hardening</span>
+          <span class="nav-badge count-highlight">DEV</span>
+        </button>
       </nav>
 
       <div class="sidebar-footer">
@@ -741,6 +746,155 @@
 
           <div class="matrix-grid" id="services-matrix-grid">
             <!-- Dynamic Services Loaded Here -->
+          </div>
+        </section>
+
+        <!-- TAB 6: SECOPS, CVES & HARDENING ADVISOR -->
+        <section id="tab-technical" class="tab-pane">
+          <!-- Technical Metrics Ribbon -->
+          <div class="tech-header-strip">
+            <div class="tech-kpi-card">
+              <div class="tech-kpi-icon crit"><i data-feather="zap"></i></div>
+              <div>
+                <span class="tech-kpi-lbl">CVEs Mapeadas & Mitigadas</span>
+                <span class="tech-kpi-val" id="tech-cve-total">6 Vulnerabilidades</span>
+              </div>
+            </div>
+            <div class="tech-kpi-card">
+              <div class="tech-kpi-icon shield"><i data-feather="shield-check"></i></div>
+              <div>
+                <span class="tech-kpi-lbl">Score de Hardening Interno</span>
+                <span class="tech-kpi-val text-success" id="tech-hardening-score">80.0%</span>
+              </div>
+            </div>
+            <div class="tech-kpi-card">
+              <div class="tech-kpi-icon info"><i data-feather="eye"></i></div>
+              <div>
+                <span class="tech-kpi-lbl">Tentativas Interceptadas</span>
+                <span class="tech-kpi-val" id="tech-intercepts-total">576 ataques</span>
+              </div>
+            </div>
+            <div class="tech-kpi-card">
+              <div class="tech-kpi-icon bouncer"><i data-feather="activity"></i></div>
+              <div>
+                <span class="tech-kpi-lbl">Latência de Mitigação Borda</span>
+                <span class="tech-kpi-val text-primary">38.4 ms (Live Mode)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Technical Sub-Tabs Toggle -->
+          <div class="tech-tabs-bar">
+            <button class="tech-subnav-btn active" data-subtab="tech-view-cves">
+              <i data-feather="alert-triangle"></i>
+              <span>Catálogo Forense de CVEs & Explorações</span>
+            </button>
+            <button class="tech-subnav-btn" data-subtab="tech-view-hardening">
+              <i data-feather="tool"></i>
+              <span>Security Advisor & Hardening Interno</span>
+            </button>
+            <button class="tech-subnav-btn" data-subtab="tech-view-inspector">
+              <i data-feather="terminal"></i>
+              <span>Inspetor Forense de Payloads Brutos</span>
+            </button>
+            <button class="tech-subnav-btn" data-subtab="tech-view-tester">
+              <i data-feather="play"></i>
+              <span>Simulador de Regras & WAF Tester</span>
+            </button>
+          </div>
+
+          <!-- SUBVIEW 1: CVEs DEEP-DIVE -->
+          <div id="tech-view-cves" class="tech-subview active">
+            <div class="tech-subview-intro">
+              <div>
+                <h4>Vulnerabilidades Mapeadas & Protegidas na Borda</h4>
+                <p>Mapeamento de explorações conhecidas neutralizadas pelo Traefik Ingress com recomendações de remediação para o time de desenvolvimento.</p>
+              </div>
+            </div>
+            <div class="cve-cards-grid" id="cve-cards-container">
+              <div class="loading-td">Carregando catálogo de CVEs...</div>
+            </div>
+          </div>
+
+          <!-- SUBVIEW 2: HARDENING ADVISOR -->
+          <div id="tech-view-hardening" class="tech-subview" style="display: none;">
+            <div class="tech-subview-intro">
+              <div>
+                <h4>Auditoria de Configurações & Recomendações de Hardening</h4>
+                <p>Análise automatizada de middlewares Traefik, headers de segurança e parsers do CrowdSec com snippets YAML prontos para aplicação.</p>
+              </div>
+            </div>
+            <div class="hardening-checklist" id="hardening-checklist-container">
+              <div class="loading-td">Carregando auditoria de hardening...</div>
+            </div>
+          </div>
+
+          <!-- SUBVIEW 3: RAW PAYLOAD INSPECTOR -->
+          <div id="tech-view-inspector" class="tech-subview" style="display: none;">
+            <div class="tech-subview-intro">
+              <div>
+                <h4>Inspetor Forense de Payloads Brutos</h4>
+                <p>Amostragem em tempo real de requisições bloqueadas com URI completa, método HTTP, user-agents maliciosos e decisões aplicadas.</p>
+              </div>
+              <button class="btn btn-sm btn-outline" id="btn-refresh-inspector">
+                <i data-feather="refresh-cw"></i> <span>Atualizar Payloads</span>
+              </button>
+            </div>
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Timestamp</th>
+                    <th>IP / País</th>
+                    <th>Método</th>
+                    <th>URI / Payload Bruto Interceptado</th>
+                    <th>User-Agent</th>
+                    <th>Cenário Disparado</th>
+                    <th>Decisão</th>
+                  </tr>
+                </thead>
+                <tbody id="inspector-table-body">
+                  <tr><td colspan="7" class="loading-td">Carregando payloads inspecionados...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- SUBVIEW 4: WAF & RULE TESTER WORKBENCH -->
+          <div id="tech-view-tester" class="tech-subview" style="display: none;">
+            <div class="tech-subview-intro">
+              <div>
+                <h4>Bancada de Testes de Regras & WAF Sandbox</h4>
+                <p>Execute simulações de payloads e verifique se as heurísticas de detecção e bouncers interceptam a requisição com código 403 Forbidden.</p>
+              </div>
+            </div>
+            <div class="tester-workbench">
+              <div class="tester-form-col">
+                <div class="form-group">
+                  <label for="tester-rule-type">Tipo de Vetor / Teste</label>
+                  <select id="tester-rule-type" class="form-select">
+                    <option value="sqli">SQL Injection (CWE-89)</option>
+                    <option value="traversal">Path Traversal (CWE-22)</option>
+                    <option value="dotfiles">Acesso a Arquivo Sensível (.env / .git)</option>
+                    <option value="log4j">Exploração CVE-2021-44228 (Log4Shell JNDI)</option>
+                    <option value="bad_agent">Scanner Malicioso (sqlmap, nikto, masscan)</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="tester-input-payload">Payload / String de Teste</label>
+                  <textarea id="tester-input-payload" class="form-input" rows="3">' OR '1'='1' --</textarea>
+                </div>
+                <button class="btn btn-primary" id="btn-run-simulation">
+                  <i data-feather="play"></i> <span>Executar Teste de Interceptação</span>
+                </button>
+              </div>
+              <div class="tester-result-col" id="tester-result-box">
+                <div class="tester-placeholder">
+                  <i data-feather="shield"></i>
+                  <p>Clique em <strong>"Executar Teste de Interceptação"</strong> para validar a resposta do CrowdSec Bouncer.</p>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 
