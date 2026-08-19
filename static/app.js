@@ -1736,6 +1736,8 @@ function startRadarStream() {
   radarStreamTimer = setInterval(fetchAndRenderRadarEvents, 3500);
 }
 
+const radarActiveMarkersMap = new Map();
+
 async function fetchAndRenderRadarEvents() {
   try {
     const res = await fetch('/api/radar/events');
@@ -1754,7 +1756,93 @@ async function fetchAndRenderRadarEvents() {
 
     if (!rawEvents.length) return;
 
-    // Filter based on active toggles (Legit / Threats)
+    const now = Date.now();
+
+    // 1. Process 3-minute sliding window markers on the global map
+    rawEvents.forEach(evt => {
+      if (evt.lat === undefined || evt.lng === undefined) return;
+      const evtTime = new Date(evt.timestamp).getTime();
+      if (isNaN(evtTime)) return;
+
+      // Only plot events within the last 3 minutes (180,000 ms)
+      if (now - evtTime <= 180000) {
+        const key = evt.id || `${evt.ip}_${evt.type}`;
+        const isBlocked = (evt.type === 'blocked');
+        const color = isBlocked ? '#ef4444' : '#10b981';
+        const isVisible = isBlocked ? showRadarThreats : showRadarLegit;
+
+        if (!radarActiveMarkersMap.has(key)) {
+          // Create solid core marker for the 3-minute window
+          const coreMarker = L.circleMarker([evt.lat, evt.lng], {
+            radius: 6,
+            fillColor: color,
+            color: '#ffffff',
+            weight: 2,
+            opacity: 1,
+            fillOpacity: 0.95
+          });
+
+          const popupHtml = `
+            <div class="radar-popup-card ${isBlocked ? 'blocked' : 'legit'}">
+              <div style="font-weight: 700; color: #ffffff; margin-bottom: 2px;">
+                ${isBlocked ? '🛑 ATAQUE BLOQUEADO' : '🟢 ACESSO AUTORIZADO'}
+              </div>
+              <div><strong>IP:</strong> ${evt.ip} (${evt.city}, ${evt.country})</div>
+              <div style="font-size: 0.72rem; color: #94a3b8;">${escapeHtml(evt.rdns_hostname)}</div>
+              <div style="margin-top: 3px; font-weight: 600; color: ${isBlocked ? '#f87171' : '#34d399'};">
+                ${evt.target_service}
+              </div>
+              <button class="btn btn-sm btn-outline" style="margin-top: 6px; width: 100%; font-size: 0.7rem; padding: 4px;" onclick="openThreatDossier('${evt.ip}')">
+                Ver Dossiê Forense
+              </button>
+            </div>
+          `;
+
+          coreMarker.bindPopup(popupHtml, {
+            className: 'radar-live-popup',
+            autoClose: true,
+            closeOnClick: true,
+            offset: [0, -6]
+          });
+
+          if (isVisible && radarMapInstance) {
+            coreMarker.addTo(radarMapInstance);
+            // Trigger temporary ripple wave animation on initial appearance
+            emitRadarRippleRing(evt.lat, evt.lng, color);
+          }
+
+          radarActiveMarkersMap.set(key, {
+            marker: coreMarker,
+            timestamp: evtTime,
+            type: evt.type,
+            evt: evt
+          });
+        } else {
+          // Update visibility based on filter toggles
+          const entry = radarActiveMarkersMap.get(key);
+          if (radarMapInstance) {
+            const hasLayer = radarMapInstance.hasLayer(entry.marker);
+            if (isVisible && !hasLayer) {
+              entry.marker.addTo(radarMapInstance);
+            } else if (!isVisible && hasLayer) {
+              radarMapInstance.removeLayer(entry.marker);
+            }
+          }
+        }
+      }
+    });
+
+    // 2. Clean up expired markers older than 3 minutes (180s)
+    radarActiveMarkersMap.forEach((entry, key) => {
+      if (now - entry.timestamp > 180000) {
+        if (radarMapInstance && radarMapInstance.hasLayer(entry.marker)) {
+          radarMapInstance.removeLayer(entry.marker);
+        }
+        radarActiveMarkersMap.delete(key);
+      }
+    });
+
+    // 3. Filter and render the realtime ticker feed (newest on top)
     const filteredEvents = rawEvents.filter(e => {
       if (e.type === 'blocked' && !showRadarThreats) return false;
       if (e.type === 'legit' && !showRadarLegit) return false;
@@ -1763,10 +1851,6 @@ async function fetchAndRenderRadarEvents() {
 
     // Sort strictly chronological: latest timestamp at the very top (index 0)
     filteredEvents.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-
-    // Exact 1-to-1 synchronization: emit pulses ONLY for the newest top 3 events entering the feed
-    const newestTopEvents = filteredEvents.slice(0, 3);
-    newestTopEvents.forEach(evt => emitRadarPulseMarker(evt));
 
     // Update Ticker Stream strictly in chronological descending order (newest on top)
     if (tickerContainer) {
@@ -1824,27 +1908,9 @@ async function fetchAndRenderRadarEvents() {
   }
 }
 
-function emitRadarPulseMarker(evt) {
+function emitRadarRippleRing(lat, lng, color) {
   if (!radarMapInstance) return;
 
-  const lat = evt.lat;
-  const lng = evt.lng;
-  if (lat === undefined || lng === undefined) return;
-
-  const isBlocked = (evt.type === 'blocked');
-  const color = isBlocked ? '#ef4444' : '#10b981';
-
-  // 1. Solid center core dot with high contrast white border (Leaflet native vector)
-  const coreMarker = L.circleMarker([lat, lng], {
-    radius: 6,
-    fillColor: color,
-    color: '#ffffff',
-    weight: 2,
-    opacity: 1,
-    fillOpacity: 0.95
-  }).addTo(radarMapInstance);
-
-  // 2. Expanding radar pulse ring
   const pulseRing = L.circleMarker([lat, lng], {
     radius: 8,
     fillColor: color,
@@ -1854,14 +1920,13 @@ function emitRadarPulseMarker(evt) {
     fillOpacity: 0.25
   }).addTo(radarMapInstance);
 
-  // Animate pulse ring radius expansion and fade-out smoothly
   let currentRadius = 8;
   let currentOpacity = 0.85;
   let currentFillOpacity = 0.25;
   const pulseInterval = setInterval(() => {
-    currentRadius += 1.2;
-    currentOpacity = Math.max(0, currentOpacity - 0.04);
-    currentFillOpacity = Math.max(0, currentFillOpacity - 0.015);
+    currentRadius += 1.4;
+    currentOpacity = Math.max(0, currentOpacity - 0.05);
+    currentFillOpacity = Math.max(0, currentFillOpacity - 0.02);
     
     if (pulseRing && radarMapInstance && radarMapInstance.hasLayer(pulseRing)) {
       pulseRing.setRadius(currentRadius);
@@ -1870,63 +1935,13 @@ function emitRadarPulseMarker(evt) {
         fillOpacity: currentFillOpacity
       });
     }
-  }, 100);
-
-  const popupHtml = `
-    <div class="radar-popup-card ${isBlocked ? 'blocked' : 'legit'}">
-      <div style="font-weight: 700; color: #ffffff; margin-bottom: 2px;">
-        ${isBlocked ? '🛑 ATAQUE BLOQUEADO' : '🟢 ACESSO AUTORIZADO'}
-      </div>
-      <div><strong>IP:</strong> ${evt.ip} (${evt.city}, ${evt.country})</div>
-      <div style="font-size: 0.72rem; color: #94a3b8;">${escapeHtml(evt.rdns_hostname)}</div>
-      <div style="margin-top: 3px; font-weight: 600; color: ${isBlocked ? '#f87171' : '#34d399'};">
-        ${evt.target_service}
-      </div>
-      <button class="btn btn-sm btn-outline" style="margin-top: 6px; width: 100%; font-size: 0.7rem; padding: 4px;" onclick="openThreatDossier('${evt.ip}')">
-        Ver Dossiê Forense
-      </button>
-    </div>
-  `;
-
-  // Bind popup to open ONLY when clicked
-  coreMarker.bindPopup(popupHtml, {
-    className: 'radar-live-popup',
-    autoClose: true,
-    closeOnClick: true,
-    offset: [0, -6]
-  });
-
-  let isPopupOpen = false;
-  coreMarker.on('popupopen', () => { isPopupOpen = true; });
-  coreMarker.on('popupclose', () => {
-    isPopupOpen = false;
-    cleanup();
-  });
-
-  function cleanup() {
-    clearInterval(pulseInterval);
-    try {
-      if (radarMapInstance) {
-        if (radarMapInstance.hasLayer(coreMarker)) radarMapInstance.removeLayer(coreMarker);
-        if (radarMapInstance.hasLayer(pulseRing)) radarMapInstance.removeLayer(pulseRing);
-      }
-    } catch (e) {}
-  }
-
-  // Smooth fade-out after 3.5s unless popup is open
-  setTimeout(() => {
-    if (!isPopupOpen) {
-      let coreOp = 0.95;
-      const fadeInterval = setInterval(() => {
-        coreOp = Math.max(0, coreOp - 0.15);
-        if (coreMarker && radarMapInstance && radarMapInstance.hasLayer(coreMarker)) {
-          coreMarker.setStyle({ opacity: coreOp, fillOpacity: coreOp });
+    if (currentOpacity <= 0) {
+      clearInterval(pulseInterval);
+      try {
+        if (radarMapInstance && radarMapInstance.hasLayer(pulseRing)) {
+          radarMapInstance.removeLayer(pulseRing);
         }
-        if (coreOp <= 0) {
-          clearInterval(fadeInterval);
-          cleanup();
-        }
-      }, 50);
+      } catch (e) {}
     }
-  }, 3500);
+  }, 80);
 }

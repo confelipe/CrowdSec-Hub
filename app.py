@@ -760,7 +760,7 @@ async def get_radar_events():
                source_as_name, source_country 
         FROM alerts 
         ORDER BY id DESC 
-        LIMIT 25
+        LIMIT 50
     """)
     alerts_rows = [dict(r) for r in cursor.fetchall()]
     conn.close()
@@ -770,7 +770,7 @@ async def get_radar_events():
     now_utc = datetime.now(timezone.utc)
     now_ts = now_utc.isoformat()
 
-    # Process blocked attack events with realistic chronological stream timestamps
+    # Process blocked attack events with timestamps spread smoothly over the 3-minute window (180s)
     for idx, a in enumerate(alerts_rows):
         ip = a["source_ip"] or "185.220.101.5"
         country = a["source_country"] or "US"
@@ -780,7 +780,7 @@ async def get_radar_events():
         scen = a["scenario"] or "http-probing"
         clean_scen = scen.replace("crowdsecurity/", "").replace("LePresidente/", "")
         
-        blk_time = (now_utc - timedelta(seconds=(idx * 8 + 5))).isoformat()
+        blk_time = (now_utc - timedelta(seconds=(idx * 3.5 + 3))).isoformat()
         
         events.append({
             "id": f"blk-{a['id']}",
@@ -802,7 +802,7 @@ async def get_radar_events():
             "db_created_at": a["created_at"]
         })
 
-    # Generate recent legitimate access pulses
+    # Generate legitimate access pulses over the 3-minute window
     legit_origins = [
         {"city": "São Paulo", "region": "São Paulo (SP)", "country": "BR", "lat": -23.5505, "lng": -46.6333, "ip": "189.120.45.10", "as": "Claro S.A. Fibra", "service": "GLPI Central Helpdesk"},
         {"city": "Rio de Janeiro", "region": "Rio de Janeiro (RJ)", "country": "BR", "lat": -22.9068, "lng": -43.1729, "ip": "177.85.210.33", "as": "Vivo Fibra", "service": "InfraAI Agent Portal"},
@@ -812,11 +812,18 @@ async def get_radar_events():
         {"city": "Brasília", "region": "Distrito Federal (DF)", "country": "BR", "lat": -15.7975, "lng": -47.8919, "ip": "168.197.80.44", "as": "Telebras", "service": "InfraAI Agent Portal"},
         {"city": "Porto Alegre", "region": "Rio Grande do Sul (RS)", "country": "BR", "lat": -30.0346, "lng": -51.2177, "ip": "189.38.201.7", "as": "Oi Internet", "service": "Troca de Senha AD"},
         {"city": "Recife", "region": "Pernambuco (PE)", "country": "BR", "lat": -8.0476, "lng": -34.8770, "ip": "177.67.90.18", "as": "Brisanet Fibra", "service": "GLPI Central Helpdesk"},
-        {"city": "Lisboa", "region": "Lisboa", "country": "PT", "lat": 38.7223, "lng": -9.1393, "ip": "213.13.88.90", "as": "Altice Portugal", "service": "Open Labs Corporate Hub"}
+        {"city": "Salvador", "region": "Bahia (BA)", "country": "BR", "lat": -12.9777, "lng": -38.5016, "ip": "177.18.99.41", "as": "Claro Fibra", "service": "GLPI Central Helpdesk"},
+        {"city": "Fortaleza", "region": "Ceará (CE)", "country": "BR", "lat": -3.7319, "lng": -38.5267, "ip": "179.124.70.12", "as": "Brisanet", "service": "InfraAI Agent Portal"},
+        {"city": "Florianópolis", "region": "Santa Catarina (SC)", "country": "BR", "lat": -27.5954, "lng": -48.5480, "ip": "186.230.12.8", "as": "Unifique Telecom", "service": "Open Labs Corporate Hub"},
+        {"city": "Goiânia", "region": "Goiás (GO)", "country": "BR", "lat": -16.6869, "lng": -49.2648, "ip": "187.100.44.29", "as": "Vivo Fibra", "service": "GLPI Helpdesk Ingress"},
+        {"city": "Manaus", "region": "Amazonas (AM)", "country": "BR", "lat": -3.1190, "lng": -60.0217, "ip": "177.105.62.15", "as": "Claro Fibra", "service": "GLPI Central Helpdesk"},
+        {"city": "Vitória", "region": "Espírito Santo (ES)", "country": "BR", "lat": -20.3155, "lng": -40.3128, "ip": "189.102.31.77", "as": "V.tal Fibra", "service": "SAP Mobile Ingress"},
+        {"city": "Lisboa", "region": "Lisboa", "country": "PT", "lat": 38.7223, "lng": -9.1393, "ip": "213.13.88.90", "as": "Altice Portugal", "service": "Open Labs Corporate Hub"},
+        {"city": "Porto", "region": "Porto", "country": "PT", "lat": 41.1579, "lng": -8.6291, "ip": "213.13.90.14", "as": "NOS Telecom", "service": "Open Labs Corporate Hub"}
     ]
 
     for idx, l in enumerate(legit_origins):
-        legit_time = (now_utc - timedelta(seconds=(idx * 4 + 2))).isoformat()
+        legit_time = (now_utc - timedelta(seconds=(idx * 7 + 2))).isoformat()
         events.append({
             "id": f"legit-{idx}",
             "type": "legit",
