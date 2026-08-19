@@ -3114,23 +3114,25 @@ select option,
 }
 
 .ticker-meta-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  width: 100%;
 }
 
 .ticker-pill {
-  font-size: 0.68rem;
+  width: 100%;
+  font-size: 0.7rem;
   font-family: var(--font-mono);
   font-weight: 600;
-  height: 20px;
-  line-height: 18px;
-  padding: 0 7px;
+  height: 22px;
+  line-height: 20px;
+  padding: 0 4px;
   border-radius: 4px;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
+  text-align: center;
   white-space: nowrap;
   box-sizing: border-box;
 }
@@ -3153,30 +3155,41 @@ select option,
   border: 1px solid rgba(16, 185, 129, 0.28);
 }
 
+.ticker-footer-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
 .ticker-service-name {
-  font-size: 0.7rem;
   color: var(--text-secondary);
+  font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 140px;
+  max-width: 130px;
 }
 
 .ticker-scen {
-  font-size: 0.68rem;
   color: #fca5a5;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-align: right;
+  max-width: 140px;
 }
 
 .ticker-rdns {
-  font-size: 0.68rem;
   color: #64748b;
   font-family: var(--font-mono);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-align: right;
+  max-width: 140px;
 }
 
 /* Ephemeral Pulse Marker Animations */

@@ -1797,14 +1797,16 @@ async function fetchAndRenderRadarEvents() {
               <span class="ticker-loc-tag">📍 ${e.city}, ${e.country}</span>
             </div>
             <div class="ticker-meta-row">
-              ${timeStr ? `<span class="ticker-pill time">⏱️ ${timeStr}</span>` : ''}
+              <span class="ticker-pill time">⏱️ ${timeStr || '--:--:--'}</span>
               <span class="ticker-pill status ${e.type}">${statusLabel}</span>
-              <span class="ticker-service-name">${escapeHtml(e.target_service)}</span>
             </div>
-            ${isBlocked 
-              ? `<div class="ticker-scen">⚠️ ${escapeHtml(e.scenario)}</div>` 
-              : `<div class="ticker-rdns">${escapeHtml(e.rdns_hostname || 'Tráfego Legítimo Borda Ingress')}</div>`
-            }
+            <div class="ticker-footer-row">
+              <span class="ticker-service-name">${escapeHtml(e.target_service)}</span>
+              ${isBlocked 
+                ? `<span class="ticker-scen">⚠️ ${escapeHtml(e.scenario)}</span>` 
+                : `<span class="ticker-rdns">${escapeHtml(e.rdns_hostname ? e.rdns_hostname.substring(0, 22) : 'Tráfego Legítimo')}</span>`
+              }
+            </div>
           </div>
         `;
       }).join('');
