@@ -84,9 +84,9 @@ function initTabs(topology) {
   const printBtn = document.getElementById('btn-print-report');
 
   const titles = {
-    'tab-overview': { title: 'Painel Executivo de Segurança', sub: 'Evidência de eficácia, bloqueios, conformidade e inteligência colaborativa OpenLabs' },
-    'tab-topology': { title: 'Topologia & Grafo de Segurança', sub: 'Fluxos de tráfego, conexões do bouncer e inspeção de infraestrutura' },
-    'tab-report': { title: 'Relatório de Diretoria & Conformidade', sub: 'Sumário executivo formatado para reuniões estratégicas e auditorias' },
+    'tab-overview': { title: 'Painel Executivo de Segurança', sub: 'Evidência de eficácia, mitigação de riscos, conformidade e inteligência Open Labs S.A.' },
+    'tab-topology': { title: 'Topologia & Grafo de Segurança', sub: 'Fluxos de tráfego em tempo real, conexões do bouncer e inspeção de infraestrutura' },
+    'tab-report': { title: 'Relatório de Diretoria & Conformidade', sub: 'Sumário executivo formatado para reuniões estratégicas, comitês e auditorias' },
     'tab-alerts': { title: 'Feed de Alertas em Tempo Real', sub: 'Histórico detalhado de varreduras, ataques e mitigações ativas' },
     'tab-decisions': { title: 'Decisões e Lista de Bloqueios', sub: 'IPs banidos via detecção local e inteligência coletiva (CTI)' },
     'tab-matrix': { title: 'Matriz de Proteção de Serviços', sub: 'Auditoria de serviços Traefik, políticas de mitigação e headers' }
@@ -175,7 +175,24 @@ async function loadOverview() {
     if (document.getElementById('rep-traffic')) document.getElementById('rep-traffic').textContent = (data.kpis.total_traffic_inspected).toLocaleString() + '+';
     if (document.getElementById('rep-blocked')) document.getElementById('rep-blocked').textContent = (data.kpis.total_alerts).toLocaleString();
     if (document.getElementById('rep-cost')) document.getElementById('rep-cost').textContent = 'R$ ' + (data.kpis.financial_avoidance_brl).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    if (document.getElementById('rep-hours')) document.getElementById('rep-hours').textContent = Math.round(data.kpis.hours_saved_monthly) + 'h+ /mês';
     if (document.getElementById('report-date')) document.getElementById('report-date').textContent = new Date().toLocaleDateString('pt-BR');
+
+    // Severity Scorecard
+    if (data.risk_severities) {
+      const sev = data.risk_severities;
+      if (document.getElementById('sev-crit-count')) document.getElementById('sev-crit-count').textContent = sev.critical.count.toLocaleString();
+      if (document.getElementById('sev-crit-pct')) document.getElementById('sev-crit-pct').textContent = sev.critical.percent + '%';
+
+      if (document.getElementById('sev-high-count')) document.getElementById('sev-high-count').textContent = sev.high.count.toLocaleString();
+      if (document.getElementById('sev-high-pct')) document.getElementById('sev-high-pct').textContent = sev.high.percent + '%';
+
+      if (document.getElementById('sev-med-count')) document.getElementById('sev-med-count').textContent = sev.medium.count.toLocaleString();
+      if (document.getElementById('sev-med-pct')) document.getElementById('sev-med-pct').textContent = sev.medium.percent + '%';
+
+      if (document.getElementById('sev-low-count')) document.getElementById('sev-low-count').textContent = sev.low.count.toLocaleString();
+      if (document.getElementById('sev-low-pct')) document.getElementById('sev-low-pct').textContent = sev.low.percent + '%';
+    }
 
     // Categories
     document.getElementById('cat-probing').textContent = data.attack_categories.probing_and_scans.toLocaleString();
@@ -831,7 +848,7 @@ function setupThreatIntelModal() {
         </div>
 
         <div style="margin-bottom: 14px; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: var(--radius-md); padding: 10px 14px;">
-          <div style="font-size: 0.75rem; color: #34d399; font-weight: 700; margin-bottom: 2px;">IMPACTO EVITADO NA OPENLABS</div>
+          <div style="font-size: 0.75rem; color: #34d399; font-weight: 700; margin-bottom: 2px;">IMPACTO EVITADO NA OPEN LABS S.A.</div>
           <p style="font-size: 0.82rem; color: #e2e8f0; line-height: 1.4;">${item.impact_avoided}</p>
         </div>
 
@@ -850,4 +867,18 @@ function setupThreatIntelModal() {
       bodyEl.innerHTML = `<div style="color: var(--danger);">Erro ao carregar detalhes: ${err.message}</div>`;
     }
   };
+
+  const printActionBtn = document.getElementById('btn-print-report-action');
+  if (printActionBtn) {
+    printActionBtn.addEventListener('click', () => {
+      window.print();
+    });
+  }
+
+  const printTopBtn = document.getElementById('btn-print-report');
+  if (printTopBtn) {
+    printTopBtn.addEventListener('click', () => {
+      window.print();
+    });
+  }
 }
