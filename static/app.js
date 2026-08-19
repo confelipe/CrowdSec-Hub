@@ -891,6 +891,13 @@ function setupThreatIntelModal() {
     });
   }
 
+  // Global Escape key listener to close any open modal
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.modal-backdrop.open').forEach(m => m.classList.remove('open'));
+    }
+  });
+
   initTechSubtabs();
   initThreatDossierModal();
 }
