@@ -1749,41 +1749,29 @@ async function fetchAndRenderRadarEvents() {
       if (document.getElementById('radar-kpi-ratio')) document.getElementById('radar-kpi-ratio').textContent = `${stats.block_ratio_percent}%`;
     }
 
-    const events = data.events || [];
+    const rawEvents = data.events || [];
     const tickerContainer = document.getElementById('radar-events-stream');
 
-    if (!events.length) return;
+    if (!rawEvents.length) return;
 
-    // Separate legitimate and blocked events to guarantee balanced simultaneous emission
-    const legitEvents = events.filter(e => e.type === 'legit');
-    const blockedEvents = events.filter(e => e.type === 'blocked');
-
-    const pickedEvents = [];
-
-    if (showRadarLegit && legitEvents.length > 0) {
-      const shuffledLegit = [...legitEvents].sort(() => 0.5 - Math.random());
-      pickedEvents.push(...shuffledLegit.slice(0, 2));
-    }
-
-    if (showRadarThreats && blockedEvents.length > 0) {
-      const shuffledBlocked = [...blockedEvents].sort(() => 0.5 - Math.random());
-      pickedEvents.push(...shuffledBlocked.slice(0, 2));
-    }
-
-    pickedEvents.forEach(evt => {
-      emitRadarPulseMarker(evt);
+    // Filter based on active toggles (Legit / Threats)
+    const filteredEvents = rawEvents.filter(e => {
+      if (e.type === 'blocked' && !showRadarThreats) return false;
+      if (e.type === 'legit' && !showRadarLegit) return false;
+      return true;
     });
 
-    // Update Ticker Stream with interleaved mix of events
-    if (tickerContainer) {
-      const interleaved = [];
-      const maxLen = Math.max(blockedEvents.length, legitEvents.length);
-      for (let i = 0; i < maxLen && interleaved.length < 16; i++) {
-        if (blockedEvents[i]) interleaved.push(blockedEvents[i]);
-        if (legitEvents[i]) interleaved.push(legitEvents[i]);
-      }
+    // Sort strictly chronological: latest timestamp at the very top (index 0)
+    filteredEvents.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
-      const tickerHtml = interleaved.map(e => {
+    // Emit pulses on the map for the 2 newest events
+    const newestEvents = filteredEvents.slice(0, 2);
+    newestEvents.forEach(evt => emitRadarPulseMarker(evt));
+
+    // Update Ticker Stream strictly in chronological descending order (newest on top)
+    if (tickerContainer) {
+      const displayEvents = filteredEvents.slice(0, 16);
+      const tickerHtml = displayEvents.map((e, idx) => {
         let timeStr = '';
         if (e.timestamp) {
           try {
@@ -1800,7 +1788,7 @@ async function fetchAndRenderRadarEvents() {
         }
 
         return `
-          <div class="ticker-item ${e.type}" onclick="openThreatDossier('${e.ip}')" title="Clique para abrir o Dossiê Forense">
+          <div class="ticker-item ${e.type} ${idx === 0 ? 'ticker-item-new' : ''}" onclick="openThreatDossier('${e.ip}')" title="Clique para abrir o Dossiê Forense">
             <div class="ticker-top">
               <span class="ticker-ip">${e.ip}</span>
               <div class="ticker-top-right">

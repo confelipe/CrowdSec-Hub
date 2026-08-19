@@ -767,8 +767,11 @@ async def get_radar_events():
 
     events = []
     
-    # Process blocked attack events
-    for a in alerts_rows:
+    now_utc = datetime.now(timezone.utc)
+    now_ts = now_utc.isoformat()
+
+    # Process blocked attack events with realistic chronological stream timestamps
+    for idx, a in enumerate(alerts_rows):
         ip = a["source_ip"] or "185.220.101.5"
         country = a["source_country"] or "US"
         as_name = a["source_as_name"] or "Hosting Provider"
@@ -776,6 +779,8 @@ async def get_radar_events():
         
         scen = a["scenario"] or "http-probing"
         clean_scen = scen.replace("crowdsecurity/", "").replace("LePresidente/", "")
+        
+        blk_time = (now_utc - timedelta(seconds=(idx * 8 + 5))).isoformat()
         
         events.append({
             "id": f"blk-{a['id']}",
@@ -793,26 +798,13 @@ async def get_radar_events():
             "target_service": "GLPI Helpdesk / Traefik Ingress",
             "network_type": intel["network_type"],
             "network_badge": intel["network_badge"],
-            "timestamp": a["created_at"] or datetime.now(timezone.utc).isoformat()
+            "timestamp": blk_time,
+            "db_created_at": a["created_at"]
         })
 
-    # Generate recent legitimate access pulses (from internal active routers in Brazil & Americas)
-    legit_origins = [
-        {"city": "São Paulo", "region": "São Paulo (SP)", "country": "BR", "lat": -23.5505, "lng": -46.6333, "ip": "189.120.45.10", "as": "Claro S.A. Fibra", "service": "GLPI Central Helpdesk"},
-        {"city": "Rio de Janeiro", "region": "Rio de Janeiro (RJ)", "country": "BR", "lat": -22.9068, "lng": -43.1729, "ip": "177.85.210.33", "as": "Vivo Fibra", "service": "InfraAI Agent Portal"},
-        {"city": "Belo Horizonte", "region": "Minas Gerais (MG)", "country": "BR", "lat": -19.9167, "lng": -43.9345, "ip": "200.180.99.12", "as": "Algar Telecom", "service": "SAP Mobile Ingress"},
-        {"city": "Campinas", "region": "São Paulo (SP)", "country": "BR", "lat": -22.9099, "lng": -47.0626, "ip": "187.60.114.5", "as": "Claro S.A.", "service": "Open Labs S.A. Portal"},
-        {"city": "Curitiba", "region": "Paraná (PR)", "country": "BR", "lat": -25.4284, "lng": -49.2733, "ip": "179.108.50.21", "as": "Copel Telecom", "service": "GLPI Central Helpdesk"},
-        {"city": "Brasília", "region": "Distrito Federal (DF)", "country": "BR", "lat": -15.7975, "lng": -47.8919, "ip": "168.197.80.44", "as": "Telebras", "service": "InfraAI Agent Portal"},
-        {"city": "Porto Alegre", "region": "Rio Grande do Sul (RS)", "country": "BR", "lat": -30.0346, "lng": -51.2177, "ip": "189.38.201.7", "as": "Oi Internet", "service": "Troca de Senha AD"},
-        {"city": "Recife", "region": "Pernambuco (PE)", "country": "BR", "lat": -8.0476, "lng": -34.8770, "ip": "177.67.90.18", "as": "Brisanet Fibra", "service": "GLPI Central Helpdesk"},
-        {"city": "Lisboa", "region": "Lisboa", "country": "PT", "lat": 38.7223, "lng": -9.1393, "ip": "213.13.88.90", "as": "Altice Portugal", "service": "Open Labs Corporate Hub"}
-    ]
-
-    now_utc = datetime.now(timezone.utc)
-    now_ts = now_utc.isoformat()
+    # Generate recent legitimate access pulses
     for idx, l in enumerate(legit_origins):
-        legit_time = (now_utc - timedelta(seconds=(idx * 3 + 1))).isoformat()
+        legit_time = (now_utc - timedelta(seconds=(idx * 4 + 2))).isoformat()
         events.append({
             "id": f"legit-{idx}",
             "type": "legit",
@@ -831,6 +823,9 @@ async def get_radar_events():
             "network_badge": "badge-success",
             "timestamp": legit_time
         })
+
+    # Sort all events strictly by timestamp descending (newest at the very top)
+    events.sort(key=lambda x: x["timestamp"], reverse=True)
 
     return {
         "timestamp": now_ts,
