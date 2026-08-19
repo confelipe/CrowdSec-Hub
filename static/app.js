@@ -1821,7 +1821,7 @@ function emitRadarPulseMarker(evt) {
     iconAnchor: [12, 12]
   });
 
-  const marker = L.marker([lat, lng], { icon: pulseIcon }).addTo(radarMapInstance);
+  const marker = L.marker([lat, lng], { icon: pulseIcon, cursor: 'pointer' }).addTo(radarMapInstance);
 
   const popupHtml = `
     <div class="radar-popup-card ${isBlocked ? 'blocked' : 'legit'}">
@@ -1833,21 +1833,35 @@ function emitRadarPulseMarker(evt) {
       <div style="margin-top: 3px; font-weight: 600; color: ${isBlocked ? '#f87171' : '#34d399'};">
         ${evt.target_service}
       </div>
+      <button class="btn btn-sm btn-outline" style="margin-top: 6px; width: 100%; font-size: 0.7rem; padding: 4px;" onclick="openThreatDossier('${evt.ip}')">
+        Ver Dossiê Forense
+      </button>
     </div>
   `;
 
+  // Bind popup to open ONLY when clicked (do NOT call .openPopup() automatically)
   marker.bindPopup(popupHtml, {
     className: 'radar-live-popup',
-    autoClose: false,
-    closeOnClick: false,
-    closeButton: false,
+    autoClose: true,
+    closeOnClick: true,
     offset: [0, -10]
-  }).openPopup();
+  });
 
-  // Auto-remove after 3.5 seconds
-  setTimeout(() => {
+  let isPopupOpen = false;
+  marker.on('popupopen', () => { isPopupOpen = true; });
+  marker.on('popupclose', () => {
+    isPopupOpen = false;
     try {
       if (radarMapInstance && radarMapInstance.hasLayer(marker)) {
+        radarMapInstance.removeLayer(marker);
+      }
+    } catch (e) {}
+  });
+
+  // Auto-remove marker after 3.5 seconds UNLESS the user clicked and has the popup open
+  setTimeout(() => {
+    try {
+      if (!isPopupOpen && radarMapInstance && radarMapInstance.hasLayer(marker)) {
         radarMapInstance.removeLayer(marker);
       }
     } catch (e) {}
