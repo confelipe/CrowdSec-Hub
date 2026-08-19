@@ -2873,4 +2873,374 @@ select option,
   color: #34d399;
 }
 
+/* ====================================================
+   LIVE TACTICAL RADAR (SOC REAL-TIME OPERATIONS)
+   ==================================================== */
+.radar-header-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 12px 18px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.radar-live-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-color);
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 0.5px;
+}
+
+.radar-pulse-dot {
+  width: 10px;
+  height: 10px;
+  background: #10b981;
+  border-radius: 50%;
+  box-shadow: 0 0 10px #10b981;
+  animation: radarLiveBlink 1.4s infinite ease-in-out;
+}
+
+@keyframes radarLiveBlink {
+  0% { transform: scale(0.9); opacity: 0.7; }
+  50% { transform: scale(1.3); opacity: 1; box-shadow: 0 0 15px #10b981; }
+  100% { transform: scale(0.9); opacity: 0.7; }
+}
+
+.radar-quick-kpis {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.rkpi-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.rkpi-lbl {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.rkpi-val {
+  font-size: 1.05rem;
+  font-weight: 800;
+  font-family: var(--font-mono);
+}
+
+.radar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.legit-legend-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 6px #10b981;
+}
+
+.threat-legend-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 6px #ef4444;
+}
+
+.radar-main-layout {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 18px;
+  height: calc(100vh - 210px);
+  min-height: 540px;
+}
+
+.radar-map-wrapper {
+  position: relative;
+  background: #060913;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.radar-leaflet-map {
+  width: 100%;
+  height: 100%;
+  background: #060913;
+}
+
+.radar-target-overlay {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.target-datacenter-card {
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 143, 168, 0.5);
+  border-radius: var(--radius-md);
+  padding: 8px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.target-dot {
+  width: 12px;
+  height: 12px;
+  background: var(--brand-teal, #008fa8);
+  border-radius: 50%;
+  box-shadow: 0 0 12px #00f0ff;
+}
+
+.target-datacenter-card strong {
+  display: block;
+  font-size: 0.85rem;
+  color: #ffffff;
+}
+
+.target-datacenter-card span {
+  display: block;
+  font-size: 0.72rem;
+  color: #94a3b8;
+}
+
+/* Radar Events Stream Ticker */
+.radar-ticker-sidebar {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.radar-ticker-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-color);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.radar-ticker-header h5 {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  flex: 1;
+}
+
+.radar-events-stream {
+  padding: 12px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.ticker-item {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 9px 12px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  animation: tickerSlideIn 0.3s ease-out;
+}
+
+@keyframes tickerSlideIn {
+  from { transform: translateX(20px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.ticker-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  transform: translateX(-2px);
+}
+
+.ticker-item.blocked {
+  border-left: 3px solid #ef4444;
+}
+
+.ticker-item.legit {
+  border-left: 3px solid #10b981;
+}
+
+.ticker-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.ticker-ip {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.ticker-loc {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ticker-scen {
+  font-size: 0.7rem;
+  color: #fca5a5;
+  margin-top: 2px;
+}
+
+/* Ephemeral Pulse Marker Animations */
+.radar-pulse-marker-red {
+  width: 24px;
+  height: 24px;
+  position: relative;
+}
+
+.radar-pulse-marker-red::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  background: #ef4444;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 12px #ef4444;
+}
+
+.radar-pulse-marker-red::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 36px;
+  height: 36px;
+  border: 2px solid #ef4444;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  animation: radarRipple 1.6s infinite ease-out;
+}
+
+.radar-pulse-marker-green {
+  width: 20px;
+  height: 20px;
+  position: relative;
+}
+
+.radar-pulse-marker-green::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  background: #10b981;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 10px #10b981;
+}
+
+.radar-pulse-marker-green::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 28px;
+  height: 28px;
+  border: 2px solid #10b981;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  animation: radarRipple 1.6s infinite ease-out;
+}
+
+@keyframes radarRipple {
+  0% { transform: translate(-50%, -50%) scale(0.4); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
+}
+
+/* Ephemeral live popup styling */
+.radar-live-popup .leaflet-popup-content-wrapper {
+  background: rgba(15, 23, 42, 0.92) !important;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  color: #ffffff;
+  padding: 4px;
+}
+
+.radar-live-popup .leaflet-popup-tip {
+  background: rgba(15, 23, 42, 0.92) !important;
+}
+
+.radar-popup-card {
+  padding: 4px 6px;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.radar-popup-card.blocked { border-left: 3px solid #ef4444; padding-left: 8px; }
+.radar-popup-card.legit { border-left: 3px solid #10b981; padding-left: 8px; }
+
+/* Fullscreen SOC Mode */
+.soc-fullscreen {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 99999 !important;
+  background: #040711 !important;
+  padding: 20px !important;
+}
+
+.soc-fullscreen .radar-main-layout {
+  height: calc(100vh - 110px) !important;
+}
+
+@media (max-width: 1024px) {
+  .radar-main-layout {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+  .radar-leaflet-map {
+    height: 400px;
+  }
+}
+
 

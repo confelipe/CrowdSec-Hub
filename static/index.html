@@ -37,6 +37,11 @@
           <i data-feather="share-2"></i>
           <span>Topologia & Fluxo</span>
         </button>
+        <button class="nav-item" data-tab="tab-radar">
+          <i data-feather="radio"></i>
+          <span>Radar Global em Tempo Real</span>
+          <span class="nav-badge count-highlight">LIVE</span>
+        </button>
         <button class="nav-item" data-tab="tab-report">
           <i data-feather="file-text"></i>
           <span>Relatório de Diretoria</span>
@@ -893,6 +898,75 @@
                   <i data-feather="shield"></i>
                   <p>Clique em <strong>"Executar Teste de Interceptação"</strong> para validar a resposta do CrowdSec Bouncer.</p>
                 </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- TAB 7: LIVE TACTICAL RADAR -->
+        <section id="tab-radar" class="tab-pane">
+          <div class="radar-header-toolbar">
+            <div class="radar-live-badge">
+              <div class="radar-pulse-dot"></div>
+              <span>RADAR GLOBAL AO VIVO &bull; PULSOS EM TEMPO REAL</span>
+            </div>
+
+            <div class="radar-quick-kpis">
+              <div class="rkpi-item">
+                <span class="rkpi-lbl">Acessos Válidos / min</span>
+                <span class="rkpi-val text-success" id="radar-kpi-legit">142</span>
+              </div>
+              <div class="rkpi-item">
+                <span class="rkpi-lbl">Ameaças Bloqueadas / min</span>
+                <span class="rkpi-val text-danger" id="radar-kpi-threats">8</span>
+              </div>
+              <div class="rkpi-item">
+                <span class="rkpi-lbl">Taxa de Mitigação</span>
+                <span class="rkpi-val" style="color: var(--primary);" id="radar-kpi-ratio">5.3%</span>
+              </div>
+              <div class="rkpi-item">
+                <span class="rkpi-lbl">Latência Traefik Ingress</span>
+                <span class="rkpi-val text-success">38.4 ms</span>
+              </div>
+            </div>
+
+            <div class="radar-actions">
+              <button class="btn btn-sm btn-outline active-filter" id="btn-toggle-radar-legit" title="Alternar visualização de acessos legítimos">
+                <span class="legit-legend-dot"></span> <span>Legítimos (Verde)</span>
+              </button>
+              <button class="btn btn-sm btn-outline active-filter" id="btn-toggle-radar-threats" title="Alternar visualização de ataques">
+                <span class="threat-legend-dot"></span> <span>Bloqueios (Vermelho)</span>
+              </button>
+              <button class="btn btn-sm btn-primary" id="btn-radar-fullscreen" title="Expandir para Modo Telão / Sala de Controle">
+                <i data-feather="maximize"></i> <span>Modo Telão (SOC)</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="radar-main-layout">
+            <!-- Map Display Area -->
+            <div class="radar-map-wrapper">
+              <div id="live-tactical-map" class="radar-leaflet-map"></div>
+              <div class="radar-target-overlay">
+                <div class="target-datacenter-card">
+                  <div class="target-dot"></div>
+                  <div>
+                    <strong>Open Labs S.A. Hub</strong>
+                    <span>São Paulo, Brasil (Edge Ingress)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Live Stream Ticker Sidebar -->
+            <div class="radar-ticker-sidebar">
+              <div class="radar-ticker-header">
+                <i data-feather="activity" class="text-primary"></i>
+                <h5>Fluxo de Eventos ao Vivo</h5>
+                <span class="pulse-indicator"></span>
+              </div>
+              <div class="radar-events-stream" id="radar-events-stream">
+                <div class="loading-td">Conectando ao stream do radar...</div>
               </div>
             </div>
           </div>

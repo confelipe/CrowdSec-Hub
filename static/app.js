@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setupCSVExports();
   setupManualBanModal();
   setupThreatIntelModal();
+  initThreatDossierModal();
 
   // Refresh Button
   document.getElementById('btn-refresh').addEventListener('click', () => {
@@ -86,6 +87,7 @@ function initTabs(topology) {
   const titles = {
     'tab-overview': { title: 'Painel Executivo de Segurança', sub: 'Evidência de eficácia, mitigação de riscos, conformidade e inteligência Open Labs S.A.' },
     'tab-topology': { title: 'Topologia & Grafo de Segurança', sub: 'Fluxos de tráfego em tempo real, conexões do bouncer e inspeção de infraestrutura' },
+    'tab-radar': { title: 'Radar Global de Tráfego & Ameaças em Tempo Real', sub: 'Monitoramento tático de acessos legítimos e ataques com pulsos efêmeros na cidade de origem' },
     'tab-report': { title: 'Relatório de Diretoria & Conformidade', sub: 'Sumário executivo formatado para reuniões estratégicas, comitês e auditorias' },
     'tab-technical': { title: 'SecOps, CVEs & Hardening Advisor', sub: 'Catálogo forense de explorações, auditoria de middlewares Traefik e simulador de testes WAF' },
     'tab-alerts': { title: 'Feed de Alertas em Tempo Real', sub: 'Histórico detalhado de varreduras, ataques e mitigações ativas' },
@@ -133,6 +135,11 @@ function initTabs(topology) {
 
     if (tabId === 'tab-technical') {
       loadTechnicalData();
+    }
+
+    if (tabId === 'tab-radar') {
+      initRadarMap();
+      startRadarStream();
     }
 
     feather.replace();
@@ -1232,19 +1239,12 @@ function initThreatDossierModal() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `dossie_forense_${currentDossierData.ip.replace(/[^a-zA-Z0-9]/g, '_')}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    });
-  }
-
-  if (btnExportPdf) {
+      a.download = `dossie_forense_${currentDossierData.ip.replace(/[^a-zA-Z0-9]  if (btnExportPdf) {
     btnExportPdf.addEventListener('click', () => {
       if (!currentDossierData) return;
       const d = currentDossierData;
       const c = d.correlation;
+      const geo = d.geo || { city: 'Desconhecida', region: d.country, rdns_hostname: 'Sem PTR', network_type: 'Data Center' };
       const hashId = Math.random().toString(36).substring(2, 10).toUpperCase();
 
       const printWin = window.open('', '_blank');
@@ -1305,15 +1305,27 @@ function initThreatDossierModal() {
   </div>
 
   <div class="avoid-break">
-    <div class="section-title">1. Identificação do Atacante & Inteligência de Borda</div>
+    <div class="section-title">1. Identificação do Atacante, Geolocalização & DNS Reverso</div>
     <div class="grid-2">
       <div class="card">
         <div class="card-label">Endereço IP Suspeito / Host</div>
-        <div class="card-val">${d.ip} (${d.country})</div>
+        <div class="card-val">${d.ip}</div>
       </div>
       <div class="card">
-        <div class="card-label">Sistema Autônomo (ASN) / Provedor</div>
+        <div class="card-label">Cidade & Região de Origem</div>
+        <div class="card-val">📍 ${geo.city}, ${geo.region} (${d.country})</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Sistema Autônomo (ASN) & Provedor</div>
         <div class="card-val">${d.asn.name} (${d.asn.number})</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Tipo de Infraestrutura / Rede</div>
+        <div class="card-val" style="color: #0284c7;">${geo.network_type}</div>
+      </div>
+      <div class="card" style="grid-column: span 2;">
+        <div class="card-label">Hostname Reverso (rDNS / PTR)</div>
+        <div class="card-val" style="font-family: monospace; font-size: 9pt; color: #0369a1;">${escapeHtml(geo.rdns_hostname)}</div>
       </div>
       <div class="card">
         <div class="card-label">Status de Contenção no Traefik Bouncer</div>
@@ -1399,12 +1411,16 @@ function initThreatDossierModal() {
       if (!currentDossierData) return;
       const d = currentDossierData;
       const c = d.correlation;
+      const geo = d.geo || { city: 'Desconhecida', region: d.country, rdns_hostname: 'Sem PTR', network_type: 'Data Center' };
       const txt = `
 =====================================================
 DOSSIÊ FORENSE DE CORRELAÇÃO DE AMEAÇA - OPEN LABS S.A.
 =====================================================
 IP Suspeito: ${d.ip}
-Origem: ${d.country} | ASN: ${d.asn.name} (${d.asn.number})
+Localização: ${geo.city}, ${geo.region} (${d.country})
+DNS Reverso (rDNS): ${geo.rdns_hostname}
+Classificação de Rede: ${geo.network_type}
+ASN / Provedor: ${d.asn.name} (${d.asn.number})
 Status Bouncer: ${d.is_banned ? 'BLOQUEADO (BAN ATIVO)' : 'OBSERVAÇÃO ATIVA'}
 Primeiro Registro: ${d.first_seen}
 Total de Tentativas: ${d.total_alerts}
@@ -1440,7 +1456,7 @@ ${c.internal_remediation}
       const ip = currentDossierData.ip;
       const parts = ip.split('.');
       const subnet = parts.length === 4 ? `${parts[0]}.${parts[1]}.${parts[2]}.0/24` : `${ip}/24`;
-
+      
       if (!confirm(`Deseja bloquear toda a sub-rede ${subnet} por 24 horas no Traefik Ingress Bouncer?`)) return;
 
       try {
@@ -1477,7 +1493,7 @@ ${c.internal_remediation}
 
     titleEl.textContent = `Dossiê Forense: ${ip}`;
     subEl.textContent = 'Carregando análise e correlação...';
-    bodyEl.innerHTML = '<div class="loading-td">Correlacionando requisições, CVEs e Kill Chain...</div>';
+    bodyEl.innerHTML = '<div class="loading-td">Correlacionando requisições, CVEs, Geointeligência e Kill Chain...</div>';
     modal.classList.add('open');
 
     try {
@@ -1487,11 +1503,12 @@ ${c.internal_remediation}
       currentDossierData = d;
 
       const c = d.correlation;
+      const geo = d.geo || { city: 'Desconhecida', region: d.country, rdns_hostname: 'Sem PTR', network_type: 'Data Center', network_badge: 'badge-info' };
       const parts = ip.split('.');
       const subnetStr = parts.length === 4 ? `${parts[0]}.${parts[1]}.${parts[2]}.0/24` : `${ip}/24`;
       if (subnetLbl) subnetLbl.textContent = `Bloquear Sub-rede ${subnetStr}`;
 
-      subEl.textContent = `${d.country} • ${d.asn.name} (${d.asn.number}) • ${d.asn.type}`;
+      subEl.textContent = `📍 ${geo.city}, ${geo.region} (${d.country}) • ${d.asn.name} (${d.asn.number})`;
 
       bodyEl.innerHTML = `
         <!-- Top Bar Overview -->
@@ -1503,13 +1520,25 @@ ${c.internal_remediation}
               <div style="font-size: 0.75rem; color: var(--text-muted);">Primeiro visto: ${formatDate(d.first_seen)} • ${d.total_alerts} tentativa(s) registradas</div>
             </div>
           </div>
-          <div style="display: flex; gap: 8px; align-items: center;">
+          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
             <span class="badge ${c.severity === 'CRÍTICA' ? 'badge-danger' : (c.severity === 'ALTA' ? 'badge-warning' : 'badge-info')}">
               SEVERIDADE ${c.severity} (CVSS ${c.cvss_score})
             </span>
             <span class="badge ${d.is_banned ? 'badge-danger' : 'badge-warning'}">
               ${d.is_banned ? '🛑 BAN ATIVO NA BORDA' : '⚠️ MONITORAMENTO ATIVO'}
             </span>
+          </div>
+        </div>
+
+        <!-- Geo & Reverse DNS Highlight Banner -->
+        <div style="background: rgba(0, 0, 0, 0.3); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 10px 14px; margin-bottom: 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 8px;">
+            <span style="font-size: 0.88rem; font-weight: 700; color: #ffffff;">📍 Localização: ${geo.city}, ${geo.region} (${d.country})</span>
+            <span class="badge ${geo.network_badge}">${geo.network_type}</span>
+          </div>
+          <div style="font-size: 0.76rem; color: var(--text-muted); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+            <span><strong>DNS Reverso (rDNS / PTR):</strong> <code style="color: #38bdf8; font-size: 0.76rem;">${escapeHtml(geo.rdns_hostname)}</code></span>
+            <span><strong>ASN:</strong> ${d.asn.name} (${d.asn.number})</span>
           </div>
         </div>
 
@@ -1608,4 +1637,199 @@ ${c.internal_remediation}
       bodyEl.innerHTML = `<div style="color: var(--danger); padding: 20px; text-align: center;">Erro ao carregar dossiê: ${err.message}</div>`;
     }
   };
+}
+
+// ====================================================
+// LIVE TACTICAL RADAR CONTROLLER (SOC REALTIME STREAM)
+// ====================================================
+
+let radarMapInstance = null;
+let radarStreamTimer = null;
+let showRadarLegit = true;
+let showRadarThreats = true;
+
+function initRadarMap() {
+  if (radarMapInstance) {
+    setTimeout(() => radarMapInstance.invalidateSize(), 100);
+    return;
+  }
+
+  const mapEl = document.getElementById('live-tactical-map');
+  if (!mapEl) return;
+
+  radarMapInstance = L.map('live-tactical-map', {
+    center: [15, 0],
+    zoom: 2,
+    minZoom: 1.5,
+    maxZoom: 9,
+    zoomControl: false,
+    attributionControl: false
+  });
+
+  L.control.zoom({ position: 'bottomright' }).addTo(radarMapInstance);
+
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    subdomains: 'abcd',
+    maxZoom: 19
+  }).addTo(radarMapInstance);
+
+  // Central Open Labs Primary Ingress Hub Marker (São Paulo)
+  const spCoord = [-23.5505, -46.6333];
+  const hubIcon = L.divIcon({
+    className: 'hub-pulse-marker',
+    html: '<div style="width: 16px; height: 16px; background: #00f0ff; border: 2px solid #ffffff; border-radius: 50%; box-shadow: 0 0 14px #00f0ff;"></div>',
+    iconSize: [16, 16],
+    iconAnchor: [8, 8]
+  });
+
+  L.marker(spCoord, { icon: hubIcon }).addTo(radarMapInstance)
+    .bindTooltip('<strong>Open Labs S.A. Hub</strong><br>São Paulo (Borda Ingress)', { permanent: false, direction: 'top' });
+
+  // Filter Buttons Handlers
+  const btnLegit = document.getElementById('btn-toggle-radar-legit');
+  const btnThreats = document.getElementById('btn-toggle-radar-threats');
+  const btnFullscreen = document.getElementById('btn-radar-fullscreen');
+
+  if (btnLegit) {
+    btnLegit.addEventListener('click', () => {
+      showRadarLegit = !showRadarLegit;
+      btnLegit.classList.toggle('active-filter', showRadarLegit);
+      btnLegit.style.opacity = showRadarLegit ? '1' : '0.4';
+    });
+  }
+
+  if (btnThreats) {
+    btnThreats.addEventListener('click', () => {
+      showRadarThreats = !showRadarThreats;
+      btnThreats.classList.toggle('active-filter', showRadarThreats);
+      btnThreats.style.opacity = showRadarThreats ? '1' : '0.4';
+    });
+  }
+
+  if (btnFullscreen) {
+    btnFullscreen.addEventListener('click', () => {
+      const radarTab = document.getElementById('tab-radar');
+      if (!radarTab) return;
+      radarTab.classList.toggle('soc-fullscreen');
+      const isFull = radarTab.classList.contains('soc-fullscreen');
+      btnFullscreen.innerHTML = isFull ? '<i data-feather="minimize"></i> <span>Sair do Telão</span>' : '<i data-feather="maximize"></i> <span>Modo Telão (SOC)</span>';
+      feather.replace();
+      setTimeout(() => {
+        if (radarMapInstance) radarMapInstance.invalidateSize();
+      }, 200);
+    });
+  }
+}
+
+function startRadarStream() {
+  if (radarStreamTimer) clearInterval(radarStreamTimer);
+
+  fetchAndRenderRadarEvents();
+  radarStreamTimer = setInterval(fetchAndRenderRadarEvents, 3500);
+}
+
+async function fetchAndRenderRadarEvents() {
+  try {
+    const res = await fetch('/api/radar/events');
+    if (!res.ok) return;
+    const data = await res.json();
+
+    const stats = data.radar_meta?.stats;
+    if (stats) {
+      if (document.getElementById('radar-kpi-legit')) document.getElementById('radar-kpi-legit').textContent = stats.legit_rate_per_min;
+      if (document.getElementById('radar-kpi-threats')) document.getElementById('radar-kpi-threats').textContent = stats.threat_rate_per_min;
+      if (document.getElementById('radar-kpi-ratio')) document.getElementById('radar-kpi-ratio').textContent = `${stats.block_ratio_percent}%`;
+    }
+
+    const events = data.events || [];
+    const tickerContainer = document.getElementById('radar-events-stream');
+
+    if (!events.length) return;
+
+    // Pick 2-4 events per tick to animate
+    const pickedEvents = events.slice(0, 4);
+
+    pickedEvents.forEach(evt => {
+      if (evt.type === 'blocked' && !showRadarThreats) return;
+      if (evt.type === 'legit' && !showRadarLegit) return;
+
+      emitRadarPulseMarker(evt);
+    });
+
+    // Update Ticker Stream
+    if (tickerContainer) {
+      const tickerHtml = events.slice(0, 12).map(e => `
+        <div class="ticker-item ${e.type}" onclick="openThreatDossier('${e.ip}')" title="Clique para abrir o Dossiê Forense">
+          <div class="ticker-top">
+            <span class="ticker-ip">${e.ip}</span>
+            <span class="badge ${e.type === 'blocked' ? 'badge-danger' : 'badge-success'}">${e.action}</span>
+          </div>
+          <div class="ticker-loc">
+            <span>📍 ${e.city}, ${e.country}</span>
+            <span style="font-size: 0.68rem; color: var(--text-muted);">${e.rdns_hostname ? e.rdns_hostname.substring(0, 22) : 'rDNS'}</span>
+          </div>
+          ${e.type === 'blocked' ? `<div class="ticker-scen">⚠️ ${e.scenario} &bull; ${e.target_service}</div>` : `<div style="font-size: 0.7rem; color: #86efac; margin-top: 2px;">🟢 ${e.target_service}</div>`}
+        </div>
+      `).join('');
+      tickerContainer.innerHTML = tickerHtml;
+    }
+
+  } catch (err) {
+    console.error('Radar stream error:', err);
+  }
+}
+
+function emitRadarPulseMarker(evt) {
+  if (!radarMapInstance) return;
+
+  const lat = evt.lat || 0;
+  const lng = evt.lng || 0;
+  const isBlocked = (evt.type === 'blocked');
+
+  // Custom DivIcon for ephemeral pulse
+  const pulseIcon = L.divIcon({
+    className: isBlocked ? 'radar-pulse-marker-red' : 'radar-pulse-marker-green',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+  });
+
+  const marker = L.marker([lat, lng], { icon: pulseIcon }).addTo(radarMapInstance);
+
+  const popupHtml = `
+    <div class="radar-popup-card ${isBlocked ? 'blocked' : 'legit'}">
+      <div style="font-weight: 700; color: #ffffff; margin-bottom: 2px;">
+        ${isBlocked ? '🛑 ATAQUE BLOQUEADO' : '🟢 ACESSO AUTORIZADO'}
+      </div>
+      <div><strong>IP:</strong> ${evt.ip} (${evt.city}, ${evt.country})</div>
+      <div style="font-size: 0.72rem; color: #94a3b8;">${escapeHtml(evt.rdns_hostname)}</div>
+      <div style="margin-top: 3px; font-weight: 600; color: ${isBlocked ? '#f87171' : '#34d399'};">
+        ${evt.target_service}
+      </div>
+    </div>
+  `;
+
+  marker.bindPopup(popupHtml, {
+    className: 'radar-live-popup',
+    autoClose: false,
+    closeOnClick: false,
+    closeButton: false,
+    offset: [0, -10]
+  }).openPopup();
+
+  // Draw connecting beam to Open Labs Primary Hub (São Paulo)
+  const spCoord = [-23.5505, -46.6333];
+  const polyline = L.polyline([[lat, lng], spCoord], {
+    color: isBlocked ? '#ef4444' : '#10b981',
+    weight: isBlocked ? 2 : 1.2,
+    opacity: isBlocked ? 0.7 : 0.4,
+    dashArray: isBlocked ? '4, 6' : null
+  }).addTo(radarMapInstance);
+
+  // Auto-remove after 3.5 seconds
+  setTimeout(() => {
+    try {
+      if (radarMapInstance.hasLayer(marker)) radarMapInstance.removeLayer(marker);
+      if (radarMapInstance.hasLayer(polyline)) radarMapInstance.removeLayer(polyline);
+    } catch (e) {}
+  }, 3500);
 }
