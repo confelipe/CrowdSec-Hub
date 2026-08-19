@@ -1835,21 +1835,45 @@ function emitRadarPulseMarker(evt) {
   if (lat === undefined || lng === undefined) return;
 
   const isBlocked = (evt.type === 'blocked');
+  const color = isBlocked ? '#ef4444' : '#10b981';
 
-  // Custom DivIcon with inner HTML container so animations never touch Leaflet translate3d position
-  const pulseIcon = L.divIcon({
-    className: 'radar-pulse-marker',
-    html: `
-      <div class="radar-pulse-inner ${isBlocked ? 'radar-pulse-red' : 'radar-pulse-green'}">
-        <div class="radar-dot-core"></div>
-        <div class="radar-dot-ripple"></div>
-      </div>
-    `,
-    iconSize: [24, 24],
-    iconAnchor: [12, 12]
-  });
+  // 1. Solid center core dot with high contrast white border (Leaflet native vector)
+  const coreMarker = L.circleMarker([lat, lng], {
+    radius: 6,
+    fillColor: color,
+    color: '#ffffff',
+    weight: 2,
+    opacity: 1,
+    fillOpacity: 0.95
+  }).addTo(radarMapInstance);
 
-  const marker = L.marker([lat, lng], { icon: pulseIcon, cursor: 'pointer' }).addTo(radarMapInstance);
+  // 2. Expanding radar pulse ring
+  const pulseRing = L.circleMarker([lat, lng], {
+    radius: 8,
+    fillColor: color,
+    color: color,
+    weight: 2,
+    opacity: 0.85,
+    fillOpacity: 0.25
+  }).addTo(radarMapInstance);
+
+  // Animate pulse ring radius expansion and fade-out smoothly
+  let currentRadius = 8;
+  let currentOpacity = 0.85;
+  let currentFillOpacity = 0.25;
+  const pulseInterval = setInterval(() => {
+    currentRadius += 1.2;
+    currentOpacity = Math.max(0, currentOpacity - 0.04);
+    currentFillOpacity = Math.max(0, currentFillOpacity - 0.015);
+    
+    if (pulseRing && radarMapInstance && radarMapInstance.hasLayer(pulseRing)) {
+      pulseRing.setRadius(currentRadius);
+      pulseRing.setStyle({
+        opacity: currentOpacity,
+        fillOpacity: currentFillOpacity
+      });
+    }
+  }, 100);
 
   const popupHtml = `
     <div class="radar-popup-card ${isBlocked ? 'blocked' : 'legit'}">
@@ -1867,40 +1891,45 @@ function emitRadarPulseMarker(evt) {
     </div>
   `;
 
-  // Bind popup to open ONLY when clicked (do NOT call .openPopup() automatically)
-  marker.bindPopup(popupHtml, {
+  // Bind popup to open ONLY when clicked
+  coreMarker.bindPopup(popupHtml, {
     className: 'radar-live-popup',
     autoClose: true,
     closeOnClick: true,
-    offset: [0, -10]
+    offset: [0, -6]
   });
 
   let isPopupOpen = false;
-  marker.on('popupopen', () => { isPopupOpen = true; });
-  marker.on('popupclose', () => {
+  coreMarker.on('popupopen', () => { isPopupOpen = true; });
+  coreMarker.on('popupclose', () => {
     isPopupOpen = false;
-    try {
-      if (radarMapInstance && radarMapInstance.hasLayer(marker)) {
-        radarMapInstance.removeLayer(marker);
-      }
-    } catch (e) {}
+    cleanup();
   });
 
-  // Trigger smooth fade-out at 3.0s, and remove from map at 3.7s
-  setTimeout(() => {
-    if (!isPopupOpen) {
-      const el = marker.getElement();
-      if (el) {
-        el.classList.add('radar-marker-fade-out');
-      }
-    }
-  }, 3000);
-
-  setTimeout(() => {
+  function cleanup() {
+    clearInterval(pulseInterval);
     try {
-      if (!isPopupOpen && radarMapInstance && radarMapInstance.hasLayer(marker)) {
-        radarMapInstance.removeLayer(marker);
+      if (radarMapInstance) {
+        if (radarMapInstance.hasLayer(coreMarker)) radarMapInstance.removeLayer(coreMarker);
+        if (radarMapInstance.hasLayer(pulseRing)) radarMapInstance.removeLayer(pulseRing);
       }
     } catch (e) {}
-  }, 3700);
+  }
+
+  // Smooth fade-out after 3.5s unless popup is open
+  setTimeout(() => {
+    if (!isPopupOpen) {
+      let coreOp = 0.95;
+      const fadeInterval = setInterval(() => {
+        coreOp = Math.max(0, coreOp - 0.15);
+        if (coreMarker && radarMapInstance && radarMapInstance.hasLayer(coreMarker)) {
+          coreMarker.setStyle({ opacity: coreOp, fillOpacity: coreOp });
+        }
+        if (coreOp <= 0) {
+          clearInterval(fadeInterval);
+          cleanup();
+        }
+      }, 50);
+    }
+  }, 3500);
 }
