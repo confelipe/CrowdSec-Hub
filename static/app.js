@@ -1792,19 +1792,25 @@ async function fetchAndRenderRadarEvents() {
 
         return `
           <div class="ticker-item ${e.type} ${idx === 0 ? 'ticker-item-new' : ''}" onclick="openThreatDossier('${e.ip}')" title="Clique para abrir o Dossiê Forense">
+            <!-- Linha 1: IP e Local 50/50 -->
             <div class="ticker-header-row">
               <span class="ticker-ip">${e.ip}</span>
               <span class="ticker-loc-tag">📍 ${e.city}, ${e.country}</span>
             </div>
+            <!-- Linha 2: Horario e Status 50/50 -->
             <div class="ticker-meta-row">
               <span class="ticker-pill time">⏱️ ${timeStr || '--:--:--'}</span>
               <span class="ticker-pill status ${e.type}">${statusLabel}</span>
             </div>
-            <div class="ticker-footer-row">
-              <span class="ticker-service-name">${escapeHtml(e.target_service)}</span>
+            <!-- Linha 3: Servico -->
+            <div class="ticker-service-row">
+              🛡️ ${escapeHtml(e.target_service)}
+            </div>
+            <!-- Linha 4: DNS / Cenario -->
+            <div class="ticker-dns-row ${isBlocked ? 'threat' : ''}">
               ${isBlocked 
-                ? `<span class="ticker-scen">⚠️ ${escapeHtml(e.scenario)}</span>` 
-                : `<span class="ticker-rdns">${escapeHtml(e.rdns_hostname ? e.rdns_hostname.substring(0, 22) : 'Tráfego Legítimo')}</span>`
+                ? `⚠️ ${escapeHtml(e.scenario)}` 
+                : `🌐 ${escapeHtml(e.rdns_hostname || 'Tráfego Legítimo Borda Ingress')}`
               }
             </div>
           </div>
