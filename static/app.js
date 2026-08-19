@@ -1766,7 +1766,7 @@ async function fetchAndRenderRadarEvents() {
 
       const ageSec = (now - evtTime) / 1000;
       const isBlocked = (evt.type === 'blocked');
-      const maxLifespanSec = isBlocked ? 30 : 60; // Blocked threats disappear in half the time (30s)
+      const maxLifespanSec = isBlocked ? 10 : 60; // Blocked threats disappear in 10s
 
       // Retain in active phosphor window
       if (ageSec <= maxLifespanSec) {
@@ -1826,11 +1826,11 @@ async function fetchAndRenderRadarEvents() {
       }
     });
 
-    // 2. Apply Age-based Phosphor Trail Decay (30s for Blocked, 60s for Legit)
+    // 2. Apply Age-based Phosphor Trail Decay (10s for Blocked, 60s for Legit)
     radarActiveMarkersMap.forEach((entry, key) => {
       const ageSec = (now - entry.timestamp) / 1000;
       const isBlocked = (entry.type === 'blocked');
-      const maxLifespanSec = isBlocked ? 30 : 60;
+      const maxLifespanSec = isBlocked ? 10 : 60;
       const isVisible = isBlocked ? showRadarThreats : showRadarLegit;
 
       if (ageSec > maxLifespanSec) {
@@ -1849,9 +1849,9 @@ async function fetchAndRenderRadarEvents() {
 
           if (isVisible && hasLayer) {
             if (isBlocked) {
-              // 30s Lifespan for Blocked Attacks (Half time)
-              if (ageSec <= 4) {
-                // 0-4s: Fresh impact (bright, radius 6, white border)
+              // 10s Total Lifespan for Blocked Attacks
+              if (ageSec <= 3) {
+                // 0-3s: Fresh impact (bright, radius 6, white border)
                 entry.marker.setRadius(6);
                 entry.marker.setStyle({
                   opacity: 1,
@@ -1859,11 +1859,11 @@ async function fetchAndRenderRadarEvents() {
                   weight: 2,
                   color: '#ffffff'
                 });
-              } else if (ageSec <= 15) {
-                // 4-15s: Fast decay (shrink to radius 3.5, opacity ~30%)
-                const factor = (ageSec - 4) / 11;
+              } else if (ageSec <= 6) {
+                // 3-6s: Quick shrink (radius 3.5, opacity ~32%)
+                const factor = (ageSec - 3) / 3;
                 const radius = 6 - factor * 2.5;
-                const op = 0.95 - factor * 0.65;
+                const op = 0.95 - factor * 0.63;
                 entry.marker.setRadius(radius);
                 entry.marker.setStyle({
                   opacity: op,
@@ -1872,10 +1872,10 @@ async function fetchAndRenderRadarEvents() {
                   color: '#fca5a5'
                 });
               } else {
-                // 15-30s: Faint residue before disappearing (radius 2.5, opacity ~10%)
-                const factor = (ageSec - 15) / 15;
-                const radius = 3.5 - factor * 1.0;
-                const op = Math.max(0.06, 0.30 - factor * 0.24);
+                // 6-10s: Fading trail before dissolving (radius 2.2, opacity ~8%)
+                const factor = (ageSec - 6) / 4;
+                const radius = 3.5 - factor * 1.3;
+                const op = Math.max(0.05, 0.32 - factor * 0.27);
                 entry.marker.setRadius(radius);
                 entry.marker.setStyle({
                   opacity: op,
