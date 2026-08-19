@@ -1,0 +1,120 @@
+http:
+  middlewares:
+    hide-server-header:
+      headers:
+        customResponseHeaders:
+          Server: "DCY"
+  services:
+    glpi-service:
+      loadBalancer:
+        servers:
+          - url: "https://endpoint.openlabs.interno"
+        serversTransport: glpi-insecure
+
+    infraai-service:
+      loadBalancer:
+        servers:
+          - url: "https://infraai.k8s.openlabs.local"
+        serversTransport: infraai-transport
+
+    trocasenha-service:
+      loadBalancer:
+        servers:
+          - url: "https://olbrjoauth.openlabs.interno"
+        serversTransport: glpi-insecure
+
+    sapmobile-service:
+      loadBalancer:
+        servers:
+          - url: "https://10.51.200.69:8443"
+        serversTransport: glpi-insecure
+    openlabsSite-service:
+      loadBalancer:
+        servers:
+          - url: "http://10.51.200.68:9000"
+
+  serversTransports:
+    infraai-transport:
+      insecureSkipVerify: true
+      serverName: infraai.k8s.openlabs.local
+      disableHTTP2: true
+
+    glpi-insecure:
+      insecureSkipVerify: true
+
+  routers:
+    glpi-router:
+      rule: "Host(`endpoint.openlabs.com.br`)"
+      entryPoints:
+        - websecure
+      service: glpi-service
+      middlewares:
+        - crowdsec@file
+        - hide-server-header@file
+        - security-headers@file
+        - rate-limit-api@file
+      tls:
+        certResolver: letsencrypt
+
+    openlabsSite-router:
+      rule: "Host(`openlabs.com.br`)"
+      entryPoints:
+        - websecure
+      service: openlabsSite-service
+      middlewares:
+        - crowdsec@file
+        - hide-server-header@file
+        - security-headers@file
+        - rate-limit-api@file
+      tls:
+        certResolver: letsencrypt
+
+    infraai-router:
+      rule: "Host(`infraai.oplabs.com.br`)"
+      entryPoints:
+        - websecure
+      service: infraai-service
+      middlewares:
+        - crowdsec@file
+        - hide-server-header@file
+        - security-headers@file
+      tls:
+        certResolver: letsencrypt
+
+    trocasenha-router:
+      rule: "Host(`trocasenha.oplabs.com.br`)"
+      entryPoints:
+        - websecure
+      service: trocasenha-service
+      middlewares:
+        - crowdsec@file
+      tls:
+        certResolver: letsencrypt
+
+    sapmobile-router:
+      rule: "Host(`mobile.openlabs.com.br`) || Host(`sap-mobile.openlabs.com.br`)"
+      entryPoints:
+        - sapmobile
+        - websecure
+      service: sapmobile-service
+      middlewares:
+        - crowdsec@file
+        - hide-server-header@file
+      tls:
+        certResolver: letsencrypt
+
+tcp:
+  routers:
+    wazuh-router:
+      rule: "HostSNI(`indexer-wazuh-01.oplabs.com.br`)"
+      entryPoints:
+        - websecure
+      service: wazuh-service
+      tls:
+        certResolver: letsencrypt
+
+  services:
+    wazuh-service:
+      loadBalancer:
+        servers:
+          - address: "10.51.173.163:514"

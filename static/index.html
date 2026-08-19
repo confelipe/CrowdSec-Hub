@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CrowdSec Security Hub | OpenLabs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Feather Icons, Chart.js & Leaflet Map -->
+  <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="dark-theme">
+  <div class="app-layout">
+    <!-- Sidebar / Navigation -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-logo">
+          <i data-feather="shield" class="shield-glow"></i>
+        </div>
+        <div class="brand-info">
+          <h2>CrowdSec Hub</h2>
+          <span class="badge badge-pulse">LIVE PROTECTION</span>
+        </div>
+      </div>
+
+      <nav class="nav-menu">
+        <button class="nav-item active" data-tab="tab-overview">
+          <i data-feather="grid"></i>
+          <span>Painel Executivo</span>
+        </button>
+        <button class="nav-item" data-tab="tab-topology">
+          <i data-feather="share-2"></i>
+          <span>Topologia & Fluxo</span>
+        </button>
+        <button class="nav-item" data-tab="tab-report">
+          <i data-feather="file-text"></i>
+          <span>Relatório de Diretoria</span>
+          <span class="nav-badge count-highlight">PDF</span>
+        </button>
+        <button class="nav-item" data-tab="tab-alerts">
+          <i data-feather="alert-octagon"></i>
+          <span>Feed de Alertas</span>
+          <span class="nav-badge" id="nav-alert-count">0</span>
+        </button>
+        <button class="nav-item" data-tab="tab-decisions">
+          <i data-feather="slash"></i>
+          <span>Decisões & Bans</span>
+          <span class="nav-badge count-highlight" id="nav-ban-count">24.6k</span>
+        </button>
+        <button class="nav-item" data-tab="tab-matrix">
+          <i data-feather="check-square"></i>
+          <span>Matriz de Serviços</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="server-status">
+          <div class="status-indicator online"></div>
+          <div class="server-info">
+            <span class="server-name">10.51.211.13</span>
+            <span class="server-role">Traefik Ingress Edge</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Top Header -->
+      <header class="top-header">
+        <div class="header-left">
+          <h1 id="page-title">Painel Executivo de Segurança</h1>
+          <p class="subtitle" id="page-subtitle">Evidência de eficácia, bloqueios, conformidade e inteligência colaborativa OpenLabs</p>
+        </div>
+        <div class="header-actions">
+          <div class="auto-refresh-control">
+            <span class="live-dot" id="live-indicator"></span>
+            <span class="auto-sync-label">Auto-Sync:</span>
+            <select id="auto-refresh-select" class="form-select-sm">
+              <option value="0">Desativado</option>
+              <option value="15">15s</option>
+              <option value="30" selected>30s</option>
+              <option value="60">60s</option>
+            </select>
+          </div>
+          <div class="system-time">
+            <i data-feather="clock"></i>
+            <span id="current-clock">--:--:--</span>
+          </div>
+          <button class="btn btn-outline" id="btn-print-report" style="display:none;">
+            <i data-feather="printer"></i>
+            <span>Exportar PDF / Imprimir</span>
+          </button>
+          <button class="btn btn-outline" id="btn-refresh">
+            <i data-feather="refresh-cw"></i>
+            <span>Atualizar</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- View Containers -->
+      <div class="content-body">
+        
+        <!-- TAB 1: OVERVIEW & KPIs -->
+        <section id="tab-overview" class="tab-pane active">
+          
+          <!-- Executive ROI & Score Ribbon -->
+          <div class="exec-ribbon">
+            <div class="score-card">
+              <div class="score-ring">
+                <span class="score-number" id="score-val">99.2%</span>
+              </div>
+              <div class="score-info">
+                <span class="score-tag">SCORE DE SEGURANÇA</span>
+                <h4>Postura Blindada</h4>
+                <p>5/5 Serviços corporativos cobertos por defesa em profundidade</p>
+              </div>
+            </div>
+
+            <div class="roi-item">
+              <span class="roi-label"><i data-feather="clock"></i> MTTR Automático</span>
+              <span class="roi-val text-success">&lt; 43 ms</span>
+              <span class="roi-sub">Detecção e ban em tempo real</span>
+            </div>
+
+            <div class="roi-item">
+              <span class="roi-label"><i data-feather="user-check"></i> Horas Economizadas</span>
+              <span class="roi-val text-info" id="kpi-hours-saved">150h+ /mês</span>
+              <span class="roi-sub">Triagem autônoma sem SOC manual</span>
+            </div>
+
+            <div class="roi-item">
+              <span class="roi-label"><i data-feather="dollar-sign"></i> Custo Evitado Estimado</span>
+              <span class="roi-val text-primary" id="kpi-financial-avoided">R$ 64.600</span>
+              <span class="roi-sub">Prevenção de incidentes & indisponibilidade</span>
+            </div>
+
+            <div class="roi-item">
+              <span class="roi-label"><i data-feather="check-circle"></i> Taxa de Falso Positivo</span>
+              <span class="roi-val text-success">0.00%</span>
+              <span class="roi-sub">234k+ reqs de VPN/Equipe preservadas</span>
+            </div>
+          </div>
+
+          <!-- Hero KPIs -->
+          <div class="kpi-grid">
+            <div class="kpi-card hero-card primary-gradient">
+              <div class="kpi-header">
+                <span class="kpi-title">Tráfego Total Inspecionado</span>
+                <i data-feather="activity" class="kpi-icon"></i>
+              </div>
+              <div class="kpi-value" id="kpi-total-traffic">1.57M+</div>
+              <div class="kpi-caption">
+                <span class="badge-success"><i data-feather="arrow-up-right"></i> 100% dos Logs</span>
+                <span>Analisados pelo CrowdSec</span>
+              </div>
+            </div>
+
+            <div class="kpi-card hero-card danger-gradient">
+              <div class="kpi-header">
+                <span class="kpi-title">Ataques & Scans Bloqueados</span>
+                <i data-feather="shield-off" class="kpi-icon"></i>
+              </div>
+              <div class="kpi-value" id="kpi-blocked-count">1,504</div>
+              <div class="kpi-caption">
+                <span class="badge-danger"><i data-feather="check"></i> 100% Mitigados</span>
+                <span>no Edge do Traefik</span>
+              </div>
+            </div>
+
+            <div class="kpi-card hero-card success-gradient">
+              <div class="kpi-header">
+                <span class="kpi-title">Whitelist Blindada (Colaboradores)</span>
+                <i data-feather="user-check" class="kpi-icon"></i>
+              </div>
+              <div class="kpi-value" id="kpi-whitelist-count">234,018</div>
+              <div class="kpi-caption">
+                <span class="badge-success">0% Falso Positivo</span>
+                <span>Rede Interna + VPNs</span>
+              </div>
+            </div>
+
+            <div class="kpi-card hero-card info-gradient">
+              <div class="kpi-header">
+                <span class="kpi-title">Decisões Ativas (CTI Global)</span>
+                <i data-feather="globe" class="kpi-icon"></i>
+              </div>
+              <div class="kpi-value" id="kpi-decisions-count">24,650</div>
+              <div class="kpi-caption">
+                <span class="badge-info">Inteligência Coletiva</span>
+                <span>IPs banidos preventivamente</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Attack Categories Matrix -->
+          <div class="section-title">
+            <h3><i data-feather="crosshair"></i> Vetores de Ameaças Mitigados</h3>
+            <span class="section-badge">Detecções Locais do Ingress</span>
+          </div>
+
+          <div class="vector-grid">
+            <div class="vector-card">
+              <div class="vector-icon probing">
+                <i data-feather="search"></i>
+              </div>
+              <div class="vector-details">
+                <span class="vector-name">Reconhecimento & Probing</span>
+                <span class="vector-count" id="cat-probing">46,320</span>
+                <span class="vector-sub">Path Traversal, Admin Panels, Scans</span>
+              </div>
+            </div>
+
+            <div class="vector-card">
+              <div class="vector-icon cve">
+                <i data-feather="zap"></i>
+              </div>
+              <div class="vector-details">
+                <span class="vector-name">Exploração de CVEs</span>
+                <span class="vector-count" id="cat-cve">3,450+</span>
+                <span class="vector-sub">Log4j, Spring4Shell, ThinkPHP, Netgear</span>
+              </div>
+            </div>
+
+            <div class="vector-card">
+              <div class="vector-icon bruteforce">
+                <i data-feather="lock"></i>
+              </div>
+              <div class="vector-details">
+                <span class="vector-name">Brute Force & Auth Abuse</span>
+                <span class="vector-count" id="cat-bruteforce">1,780+</span>
+                <span class="vector-sub">Abuso HTTP 401/403 e Login Flood</span>
+              </div>
+            </div>
+
+            <div class="vector-card">
+              <div class="vector-icon exploits">
+                <i data-feather="code"></i>
+              </div>
+              <div class="vector-details">
+                <span class="vector-name">Injeção & Vazamento de Dados</span>
+                <span class="vector-count" id="cat-exploits">2,800+</span>
+                <span class="vector-sub">SQLi, XSS e Arquivos Sensíveis (.env/git)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Analytics Charts -->
+          <div class="charts-grid">
+            <div class="chart-card">
+              <div class="chart-header">
+                <h4>Top Cenários de Ataque Mitigados</h4>
+              </div>
+              <div class="chart-body">
+                <canvas id="scenariosChart"></canvas>
+              </div>
+            </div>
+
+            <div class="chart-card">
+              <div class="chart-header">
+                <h4>Top Provedores Hostis (Cloud ASNs & Scanners)</h4>
+              </div>
+              <div class="chart-body">
+                <canvas id="asnsChart"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <div class="charts-grid">
+            <div class="chart-card">
+              <div class="chart-header">
+                <h4>Distribuição Geográfica das Ameaças</h4>
+              </div>
+              <div class="chart-body">
+                <canvas id="countriesChart"></canvas>
+              </div>
+            </div>
+
+            <div class="chart-card">
+              <div class="chart-header">
+                <h4>Perfil de Origem do Tráfego Hostil</h4>
+              </div>
+              <div class="chart-body">
+                <canvas id="threatProfileChart"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Interactive GeoIP Threat Map (Leaflet Vector Dark) -->
+          <div class="section-title" style="margin-top: 24px;">
+            <h3><i data-feather="map-pin"></i> Mapa Global de Origem das Ameaças (GeoIP)</h3>
+            <span class="section-badge">Hot-spots de Ataques Mitigados em Tempo Real</span>
+          </div>
+          <div class="geomap-card">
+            <div class="geomap-container">
+              <div id="leaflet-threat-map" style="width: 100%; height: 360px;"></div>
+            </div>
+            <div class="geomap-sidebar" id="geomap-ranking">
+              <div class="loading-td">Carregando telemetria geográfica...</div>
+            </div>
+          </div>
+
+        </section>
+
+        <!-- TAB 2: TOPOLOGY & FLOW (AURORA STYLE) -->
+        <section id="tab-topology" class="tab-pane">
+          <div class="topology-wrapper">
+            <div class="topology-toolbar">
+              <div class="toolbar-left">
+                <span class="topology-title"><i data-feather="git-commit"></i> Mapa Interativo de Fluxo & Proteção</span>
+                <span class="toolbar-hint">Clique nos nós para inspecionar métricas e configurações</span>
+              </div>
+              <div class="toolbar-actions">
+                <button class="btn btn-sm btn-outline" id="btn-topo-fullscreen" title="Expandir para Tela Cheia">
+                  <i data-feather="maximize-2"></i>
+                  <span>Tela Cheia</span>
+                </button>
+                <button class="btn btn-sm btn-outline" id="btn-topo-reset"><i data-feather="refresh-cw"></i> <span>Resetar Visão</span></button>
+                <button class="btn btn-sm btn-outline" id="btn-topo-pause"><i data-feather="pause"></i> <span>Pausar</span></button>
+              </div>
+            </div>
+
+            <div class="topology-canvas-container">
+              <canvas id="topologyCanvas"></canvas>
+              
+              <!-- Inspector Drawer -->
+              <div class="node-inspector" id="nodeInspector">
+                <div class="inspector-header">
+                  <div class="inspector-title-group">
+                    <span class="inspector-badge" id="insp-badge">NODE</span>
+                    <h3 id="insp-title">Selecione um nó</h3>
+                  </div>
+                  <button class="btn-close" id="insp-close">&times;</button>
+                </div>
+                <div class="inspector-content" id="insp-content">
+                  <p class="placeholder-text">Clique em qualquer componente da topologia para visualizar status, portas, políticas de segurança e tráfego.</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="topology-legend">
+              <div class="legend-item"><span class="legend-dot green"></span> 🟢 Saudável (Online)</div>
+              <div class="legend-item"><span class="legend-dot red"></span> 🔴 Falha / Queda</div>
+              <div class="legend-item"><span class="legend-dot yellow"></span> ⚠️ Impactado (Downstream)</div>
+              <div class="legend-item"><span class="legend-dot blue"></span> 🔵 Traefik & CrowdSec LAPI</div>
+              <div class="legend-item" style="color: #c084fc;"><span class="legend-dot" style="background: #c084fc; box-shadow: 0 0 6px #c084fc;"></span> 🟣 Wazuh SIEM (1514/TCP)</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- TAB: EXECUTIVE REPORT (BOARDROOM READY) -->
+        <section id="tab-report" class="tab-pane">
+          <div class="report-document" id="printable-report">
+            <div class="report-header">
+              <div class="report-brand">
+                <div class="report-logo"><i data-feather="shield"></i></div>
+                <div>
+                  <h2>OPENLABS CYBERSECURITY EXECUTIVE REPORT</h2>
+                  <span class="report-subtitle">Relatório Mensal de Eficácia, Gestão de Riscos & Inteligência de Ameaças</span>
+                </div>
+              </div>
+              <div class="report-meta">
+                <div><strong>Data de Emissão:</strong> <span id="report-date">18/08/2026</span></div>
+                <div><strong>Ambiente:</strong> Edge Ingress Inbound (10.51.211.13)</div>
+                <div><strong>Status:</strong> <span class="badge badge-success">POSTURA EXCELENTE (99.2%)</span></div>
+              </div>
+            </div>
+
+            <div class="report-section">
+              <h3 class="report-title"><i data-feather="target"></i> 1. Sumário Executivo & Indicadores de ROI</h3>
+              <div class="report-kpi-row">
+                <div class="report-kpi-box">
+                  <span class="label">Tráfego Inspecionado</span>
+                  <span class="val" id="rep-traffic">1.57M+</span>
+                  <span class="sub">100% dos pacotes auditados</span>
+                </div>
+                <div class="report-kpi-box">
+                  <span class="label">Incidentes Mitigados</span>
+                  <span class="val" id="rep-blocked">1,504</span>
+                  <span class="sub">Zero vazamentos ou invasões</span>
+                </div>
+                <div class="report-kpi-box">
+                  <span class="label">Tempo Médio de Resposta (MTTR)</span>
+                  <span class="val text-success">&lt; 43 ms</span>
+                  <span class="sub">Mitigação em tempo de linha</span>
+                </div>
+                <div class="report-kpi-box">
+                  <span class="label">Custo Estimado Evitado</span>
+                  <span class="val text-primary" id="rep-cost">R$ 64.600</span>
+                  <span class="sub">Horas de SOC & Downtime</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="report-section">
+              <h3 class="report-title"><i data-feather="shield"></i> 2. Cobertura de Aplicações Corporativas (100% Protegidas)</h3>
+              <table class="report-table">
+                <thead>
+                  <tr>
+                    <th>Serviço / Aplicação</th>
+                    <th>Domínio</th>
+                    <th>Camadas de Proteção Ativas</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="report-services-tbody">
+                  <tr>
+                    <td><strong>GLPI Central Helpdesk</strong></td>
+                    <td><code>endpoint.openlabs.com.br</code></td>
+                    <td>CrowdSec Bouncer + Rate Limit + Security Headers + TLS 1.3</td>
+                    <td><span class="badge badge-success">BLINDADO</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="report-section">
+              <h3 class="report-title"><i data-feather="globe"></i> 3. Inteligência Coletiva & Análise de Ameaças</h3>
+              <p class="report-text">
+                A OpenLabs está integrada à rede global de Inteligência contra Ameaças (CTI CrowdSec). O ambiente mantém <strong>24.650 decisões de bloqueio preventivo</strong> ativas. Além disso, <strong>76.4% dos ataques direcionados</strong> se originam em provedores de computação em nuvem (Google Cloud, Microsoft Azure, AWS, DigitalOcean) usados por botnets automatizadas, sendo neutralizados antes de causarem qualquer impacto aos serviços internos.
+              </p>
+              <div class="report-compliance-grid">
+                <div class="compliance-card">
+                  <i data-feather="check-circle" class="text-success"></i>
+                  <div>
+                    <strong>Conformidade LGPD</strong>
+                    <span>Bloqueio de tentativas de credential stuffing e injeções em formulários com PII.</span>
+                  </div>
+                </div>
+                <div class="compliance-card">
+                  <i data-feather="check-circle" class="text-success"></i>
+                  <div>
+                    <strong>Trilha de Auditoria (ISO 27001)</strong>
+                    <span>Logs estruturados retidos no Loki via Promtail com rastreabilidade completa.</span>
+                  </div>
+                </div>
+                <div class="compliance-card">
+                  <i data-feather="check-circle" class="text-success"></i>
+                  <div>
+                    <strong>Zero Interrupção aos Colaboradores</strong>
+                    <span>234.018 requisições confiáveis processadas com 0.00% de falso positivo.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="report-footer">
+              <span>OpenLabs Tecnologia S.A. | Gerado automaticamente pelo CrowdSec Security Hub</span>
+              <span>Classificação da Informação: <strong>USO INTERNO / DIRETORIA</strong></span>
+            </div>
+          </div>
+        </section>
+
+        <!-- TAB 3: LIVE ALERTS FEED -->
+        <section id="tab-alerts" class="tab-pane">
+          <div class="feed-header">
+            <div class="search-box">
+              <i data-feather="search"></i>
+              <input type="text" id="alert-search" placeholder="Buscar por IP, ASN ou Cenário...">
+            </div>
+            <div class="filter-group">
+              <select id="alert-country-filter" class="form-select">
+                <option value="">Todos os Países</option>
+              </select>
+              <button class="btn btn-sm btn-outline" id="btn-export-alerts" title="Exportar alertas para planilha CSV">
+                <i data-feather="download"></i>
+                <span>Exportar CSV</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Origem (IP / ASN)</th>
+                  <th>País</th>
+                  <th>Cenário de Ataque</th>
+                  <th>Ação</th>
+                  <th>Eventos</th>
+                  <th>Data/Hora</th>
+                </tr>
+              </thead>
+              <tbody id="alerts-table-body">
+                <tr><td colspan="7" class="loading-td">Carregando alertas em tempo real...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- TAB 4: DECISIONS & ACTIVE BANS -->
+        <section id="tab-decisions" class="tab-pane">
+          <div class="feed-header">
+            <div class="search-box">
+              <i data-feather="search"></i>
+              <input type="text" id="decision-search" placeholder="Buscar IP banido, escopo ou cenário...">
+            </div>
+            <div class="filter-group">
+              <div class="stats-counter">
+                Total de Decisões: <strong id="total-decisions-badge">24,650</strong>
+              </div>
+              <button class="btn btn-sm btn-outline" id="btn-export-decisions" title="Exportar lista de decisões para CSV">
+                <i data-feather="download"></i>
+                <span>Exportar CSV</span>
+              </button>
+              <button class="btn btn-sm btn-primary" id="btn-open-ban-modal">
+                <i data-feather="shield-off"></i>
+                <span>+ Novo Bloqueio</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Alvo / IP</th>
+                  <th>Escopo</th>
+                  <th>Ação</th>
+                  <th>Cenário / Motivo</th>
+                  <th>Origem</th>
+                  <th>Expira em</th>
+                  <th style="text-align: right;">Gerenciamento</th>
+                </tr>
+              </thead>
+              <tbody id="decisions-table-body">
+                <tr><td colspan="7" class="loading-td">Carregando decisões do banco...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- TAB 5: SERVICE PROTECTION MATRIX -->
+        <section id="tab-matrix" class="tab-pane">
+          <div class="matrix-banner">
+            <h3><i data-feather="shield"></i> Matriz de Cobertura de Segurança por Serviço</h3>
+            <p>Auditoria de routers do Traefik e camadas de mitigação ativas na borda</p>
+          </div>
+
+          <div class="matrix-grid" id="services-matrix-grid">
+            <!-- Dynamic Services Loaded Here -->
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- MODAL: MANUAL BAN -->
+  <div class="modal-backdrop" id="modal-manual-ban">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <i data-feather="shield-alert" class="text-danger"></i>
+          <h3>Adicionar Novo Bloqueio Manual</h3>
+        </div>
+        <button class="btn-close" id="btn-close-ban-modal">&times;</button>
+      </div>
+      <form id="form-manual-ban">
+        <div class="modal-body">
+          <p class="modal-hint">O IP/CIDR será inserido imediatamente na LAPI da CrowdSec e bloqueado no Traefik Bouncer.</p>
+          
+          <div class="form-group">
+            <label for="ban-ip">Endereço IP ou CIDR <span class="text-danger">*</span></label>
+            <input type="text" id="ban-ip" class="form-input" placeholder="Ex: 198.51.100.45 ou 203.0.113.0/24" required>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="ban-duration">Duração do Bloqueio</label>
+              <select id="ban-duration" class="form-select">
+                <option value="1h">1 Hora</option>
+                <option value="4h">4 Horas (Padrão)</option>
+                <option value="24h" selected>24 Horas</option>
+                <option value="168h">7 Dias</option>
+                <option value="720h">30 Dias</option>
+                <option value="8760h">Permanente (1 Ano)</option>
+              </select>
+            </div>
+
+            <div class="form-group flex-1">
+              <label for="ban-type">Ação de Remediação</label>
+              <select id="ban-type" class="form-select">
+                <option value="ban" selected>Ban (HTTP 403 Forbidden)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="ban-reason">Motivo / Cenário da Intervenção</label>
+            <input type="text" id="ban-reason" class="form-input" placeholder="Ex: Tentativa suspeita em API / Varredura maliciosa" value="Intervenção SecOps OpenLabs">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" id="btn-cancel-ban">Cancelar</button>
+          <button type="submit" class="btn btn-danger" id="btn-submit-ban">
+            <i data-feather="shield-off"></i>
+            <span>Executar Bloqueio</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: THREAT INTEL -->
+  <div class="modal-backdrop" id="modal-threat-intel">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <i data-feather="shield" class="text-primary"></i>
+          <h3 id="intel-title">Inteligência de Ameaça</h3>
+        </div>
+        <button class="btn-close" id="btn-close-intel-modal">&times;</button>
+      </div>
+      <div class="modal-body" id="intel-body">
+        <!-- Dynamic Intel Details -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" id="btn-close-intel-btn">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/topology.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>

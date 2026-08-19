@@ -1,0 +1,23 @@
+version: "3.8"
+
+services:
+  crowdsec-dashboard:
+    build: .
+    container_name: crowdsec-dashboard
+    restart: always
+    ports:
+      - "8090:8090"
+    environment:
+      - CROWDSEC_DB_PATH=/var/lib/crowdsec/data/crowdsec.db
+      - PROMETHEUS_URL=http://crowdsec:6060/metrics
+    volumes:
+      - "/docker/traefik/crowdsec/data:/var/lib/crowdsec/data:ro"
+      - "/docker/traefik/dynamic:/docker/traefik/dynamic:ro"
+      - "/docker/traefik/crowdsec/config:/etc/crowdsec:ro"
+      - "/docker/traefik/logs:/docker/traefik/logs:ro"
+    networks:
+      - traefik_traefik
+
+networks:
+  traefik_traefik:
+    external: true

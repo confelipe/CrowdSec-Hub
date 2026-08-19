@@ -1,0 +1,35 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.env
+.venv
+env/
+venv/
+
+# SQLite databases & logs
+*.db
+*.sqlite
+*.sqlite3
+*.log
+
+# Sensitive credentials & private keys
+*priv*
+*.pem
+*.key
+*.crt
+*.pfx
+*.p12
+*.id_rsa
+*.id_ed25519
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
