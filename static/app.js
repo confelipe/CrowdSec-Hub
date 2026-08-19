@@ -1239,7 +1239,15 @@ function initThreatDossierModal() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `dossie_forense_${currentDossierData.ip.replace(/[^a-zA-Z0-9]  if (btnExportPdf) {
+      a.download = `dossie_forense_${currentDossierData.ip.replace(/[^a-zA-Z0-9]/g, '_')}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+  }
+
+  if (btnExportPdf) {
     btnExportPdf.addEventListener('click', () => {
       if (!currentDossierData) return;
       const d = currentDossierData;
